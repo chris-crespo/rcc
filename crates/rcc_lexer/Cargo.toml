@@ -1,0 +1,6 @@
+[package]
+name = "rcc_lexer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

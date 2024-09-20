@@ -1,6 +1,7 @@
 use std::process::{Child, Command, Stdio};
 
 use clap::Parser;
+use rcc_lexer::{Lexer, TokenKind};
 
 #[derive(Debug, Parser)]
 #[command(name = "rcc")]
@@ -24,9 +25,31 @@ struct Cli {
 fn main() {
     let args = Cli::parse();
 
-    let preprocessor_output = spawn_preprocessor(&args.filename).expect("Failed to spawn preprocessor.");
-    let compiler_output = spawn_compiler(preprocessor_output).expect("Failed to spawn compiler.");
-    assemble(compiler_output).expect("Failed to spawn assembler");
+    if args.lex {
+        lex(&args.filename);
+    } else {
+        let preprocessor_output =
+            spawn_preprocessor(&args.filename).expect("Failed to spawn preprocessor.");
+        let compiler_output =
+            spawn_compiler(preprocessor_output).expect("Failed to spawn compiler.");
+        assemble(compiler_output).expect("Failed to spawn assembler");
+    }
+}
+
+fn lex(filename: &str) {
+    let source = std::fs::read_to_string(filename).expect("Failed to read file.");
+    let mut lexer = Lexer::new(&source);
+    loop {
+        let token = lexer.next_token();
+        if token.kind == TokenKind::Eof {
+            break;
+        }
+
+        // TODO: add better error reporting
+        if token.kind == TokenKind::Undetermined {
+            std::process::exit(1);
+        }
+    }
 }
 
 fn spawn_preprocessor(filename: &str) -> std::io::Result<Child> {

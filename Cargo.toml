@@ -7,4 +7,6 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
+rcc_lexer = { path = "./crates/rcc_lexer/" }
+
 clap = { version = "4.5.17", features = ["derive"] }

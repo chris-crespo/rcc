@@ -132,7 +132,12 @@ name = "rcc_driver"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "rcc_lexer",
 ]
+
+[[package]]
+name = "rcc_lexer"
+version = "0.1.0"
 
 [[package]]
 name = "strsim"
