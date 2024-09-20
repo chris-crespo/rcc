@@ -1,6 +1,7 @@
 [package]
-name = "rcc_cli"
+name = "rcc_driver"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
+clap = { workspace = true }
