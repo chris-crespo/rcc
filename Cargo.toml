@@ -7,6 +7,11 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
-rcc_lexer = { path = "./crates/rcc_lexer/" }
+rcc_ast      = { path = "./crates/rcc_ast/" }
+rcc_interner = { path = "./crates/rcc_interner/" }
+rcc_lexer    = { path = "./crates/rcc_lexer/" }
+rcc_parser   = { path = "./crates/rcc_parser/" }
+rcc_span     = { path = "./crates/rcc_span/" }
 
-clap = { version = "4.5.17", features = ["derive"] }
+clap   = { version = "4.5.17", features = ["derive"] }
+miette = { version = "7.2.0", features = ["fancy"] }

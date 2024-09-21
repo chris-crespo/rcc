@@ -1,7 +1,6 @@
 [package]
-name = "rcc_lexer"
+name = "rcc_span"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rcc_span = { workspace = true }

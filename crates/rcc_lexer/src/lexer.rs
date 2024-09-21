@@ -1,6 +1,8 @@
 use std::str::Chars;
 
-use crate::{Span, Token, TokenKind};
+use rcc_span::Span;
+
+use crate::{Token, TokenKind};
 
 pub struct Lexer<'src> {
     source: &'src str,
@@ -22,7 +24,7 @@ impl<'src> Lexer<'src> {
     }
 
     fn peek_char2(&self) -> Option<char> {
-        self.chars.clone().skip(1).next()
+        self.chars.clone().nth(1)
     }
 
     fn next_char(&mut self) -> Option<char> {

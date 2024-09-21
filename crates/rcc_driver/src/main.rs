@@ -1,9 +1,11 @@
 use std::process::{Child, Command, Stdio};
 
-use clap::Parser;
+use clap::Parser as _;
+use rcc_interner::Interner;
 use rcc_lexer::{Lexer, TokenKind};
+use rcc_parser::Parser;
 
-#[derive(Debug, Parser)]
+#[derive(Debug, clap::Parser)]
 #[command(name = "rcc")]
 #[command(about = "Rusty C Compiler")]
 struct Cli {
@@ -27,6 +29,8 @@ fn main() {
 
     if args.lex {
         lex(&args.filename);
+    } else if args.parse {
+        parse(&args.filename);
     } else {
         let preprocessor_output =
             spawn_preprocessor(&args.filename).expect("Failed to spawn preprocessor.");
@@ -49,6 +53,20 @@ fn lex(filename: &str) {
         if token.kind == TokenKind::Undetermined {
             std::process::exit(1);
         }
+    }
+}
+
+fn parse(filename: &str) {
+    let source = std::fs::read_to_string(filename).expect("Failed to read file.");
+
+    let mut interner = Interner::new();
+    let parser = Parser::new(&source, &mut interner);
+    match parser.parse() {
+        Ok(program) => println!("{:#?}", program),
+        Err(err) => {
+            println!("{:?}", err.with_source_code(source.clone()));
+            std::process::exit(1)
+        },
     }
 }
 

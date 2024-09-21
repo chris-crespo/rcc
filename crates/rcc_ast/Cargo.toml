@@ -1,0 +1,8 @@
+[package]
+name = "rcc_ast"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rcc_interner = { workspace = true }
+rcc_span     = { workspace = true }

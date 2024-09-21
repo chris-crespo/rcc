@@ -1,24 +1,16 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use rcc_span::Span;
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Token {
     pub span: Span,
     pub kind: TokenKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Span {
-    pub start: u32,
-    pub end: u32
-}
-
-impl Span {
-    pub fn new(start: u32, end: u32) -> Span {
-        Span { start, end }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
+    #[default]
     Eof,
+
     Undetermined,
 
     LeftBrace,
@@ -33,4 +25,23 @@ pub enum TokenKind {
 
     Identifier,
     Number,
+}
+
+impl TokenKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TokenKind::Eof => "eof",
+            TokenKind::Undetermined => "undetermined",
+            TokenKind::LeftBrace => "{",
+            TokenKind::RightBrace => "}",
+            TokenKind::LeftParen => "(",
+            TokenKind::RightParen => ")",
+            TokenKind::Semicolon => ";",
+            TokenKind::Int => "int",
+            TokenKind::Return => "return",
+            TokenKind::Void => "void",
+            TokenKind::Identifier => "identifier",
+            TokenKind::Number => "number",
+        }
+    }
 }
