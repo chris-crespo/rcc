@@ -1,0 +1,8 @@
+[package]
+name = "rcc_codegen"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rcc_asm = { workspace = true }
+rcc_ast = { workspace = true }

@@ -7,7 +7,9 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
+rcc_asm      = { path = "./crates/rcc_asm" }
 rcc_ast      = { path = "./crates/rcc_ast/" }
+rcc_codegen  = { path = "./crates/rcc_codegen/" }
 rcc_interner = { path = "./crates/rcc_interner/" }
 rcc_lexer    = { path = "./crates/rcc_lexer/" }
 rcc_parser   = { path = "./crates/rcc_parser/" }

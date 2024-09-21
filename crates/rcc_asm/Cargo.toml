@@ -1,0 +1,7 @@
+[package]
+name = "rcc_asm"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rcc_interner = { workspace = true }

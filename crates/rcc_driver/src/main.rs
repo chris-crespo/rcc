@@ -1,6 +1,7 @@
 use std::process::{Child, Command, Stdio};
 
 use clap::Parser as _;
+use rcc_codegen::Codegen;
 use rcc_interner::Interner;
 use rcc_lexer::{Lexer, TokenKind};
 use rcc_parser::Parser;
@@ -31,6 +32,8 @@ fn main() {
         lex(&args.filename);
     } else if args.parse {
         parse(&args.filename);
+    } else if args.codegen {
+        codegen(&args.filename)
     } else {
         let preprocessor_output =
             spawn_preprocessor(&args.filename).expect("Failed to spawn preprocessor.");
@@ -66,8 +69,26 @@ fn parse(filename: &str) {
         Err(err) => {
             println!("{:?}", err.with_source_code(source.clone()));
             std::process::exit(1)
-        },
+        }
     }
+}
+
+fn codegen(filename: &str) {
+    let source = std::fs::read_to_string(filename).expect("Failed to read file.");
+
+    let mut interner = Interner::new();
+    let parser = Parser::new(&source, &mut interner);
+    let program = match parser.parse() {
+        Ok(program) => program,
+        Err(err) => {
+            println!("{:?}", err.with_source_code(source.clone()));
+            std::process::exit(1)
+        }
+    };
+
+    let codegen = Codegen::new();
+    let asm = codegen.codegen(&program);
+    println!("{:#?}", asm)
 }
 
 fn spawn_preprocessor(filename: &str) -> std::io::Result<Child> {

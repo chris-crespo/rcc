@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+rcc_codegen  = { workspace = true }
 rcc_interner = { workspace = true }
 rcc_lexer    = { workspace = true }
 rcc_parser   = { workspace = true }
