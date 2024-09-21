@@ -23,10 +23,6 @@ impl<'src> Lexer<'src> {
         self.chars.clone().next()
     }
 
-    fn peek_char2(&self) -> Option<char> {
-        self.chars.clone().nth(1)
-    }
-
     fn next_char(&mut self) -> Option<char> {
         self.chars.next()
     }
@@ -37,20 +33,6 @@ impl<'src> Lexer<'src> {
     {
         while self.peek_char().is_some_and(&f) {
             self.next_char();
-        }
-    }
-
-    fn skip_ambience(&mut self) {
-        while let Some(c) = self.peek_char() {
-            match c {
-                '/' if self.peek_char2().is_some_and(|c| c == '/') => {
-                    self.skip_while(|c| c != '\n')
-                }
-                c if c.is_whitespace() => {
-                    self.next_char();
-                }
-                _ => break,
-            }
         }
     }
 
@@ -72,22 +54,54 @@ impl<'src> Lexer<'src> {
     }
 
     pub fn next_token(&mut self) -> Token {
-        self.skip_ambience();
-        self.start = self.offset();
+        loop {
+            self.start = self.offset();
 
-        let Some(c) = self.next_char() else {
-            return self.make_token(TokenKind::Eof);
-        };
+            let Some(c) = self.next_char() else {
+                return self.make_token(TokenKind::Eof);
+            };
 
-        match c {
-            '{' => self.make_token(TokenKind::LeftBrace),
-            '}' => self.make_token(TokenKind::RightBrace),
-            '(' => self.make_token(TokenKind::LeftParen),
-            ')' => self.make_token(TokenKind::RightParen),
-            ';' => self.make_token(TokenKind::Semicolon),
-            c if is_start_of_number(c) => self.parse_number(),
-            c if is_start_of_identifier(c) => self.parse_identifier(),
-            _ => self.make_token(TokenKind::Undetermined),
+            return match c {
+                ' ' | '\x09'..='\x0d' => continue,
+                '{' => self.make_token(TokenKind::LeftBrace),
+                '}' => self.make_token(TokenKind::RightBrace),
+                '(' => self.make_token(TokenKind::LeftParen),
+                ')' => self.make_token(TokenKind::RightParen),
+                ';' => self.make_token(TokenKind::Semicolon),
+                '/' => match self.peek_char() {
+                    Some('/') => {
+                        self.next_char();
+                        self.skip_single_line_comment();
+                        continue;
+                    }
+                    Some('*') => {
+                        self.next_char();
+                        self.skip_multiline_comment();
+                        continue;
+                    }
+                    _ => self.make_token(TokenKind::Undetermined),
+                },
+                c if is_start_of_number(c) => self.parse_number(),
+                c if is_start_of_identifier(c) => self.parse_identifier(),
+                _ => self.make_token(TokenKind::Undetermined),
+            };
+        }
+    }
+
+    fn skip_single_line_comment(&mut self) {
+        while self.next_char().is_some_and(|c| c != '\n') {}
+    }
+
+    fn skip_multiline_comment(&mut self) {
+        loop {
+            let Some(c) = self.next_char() else {
+                break;
+            };
+
+            if c == '*' && self.peek_char().is_some_and(|c| c == '/') {
+                self.next_char();
+                break;
+            }
         }
     }
 
