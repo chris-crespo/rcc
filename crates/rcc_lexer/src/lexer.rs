@@ -27,6 +27,15 @@ impl<'src> Lexer<'src> {
         self.chars.next()
     }
 
+    fn eat_char(&mut self, c: char) -> bool {
+        if self.peek_char().is_some_and(|c2| c == c2) {
+            self.next_char();
+            return true;
+        }
+
+        false
+    }
+
     fn skip_while<F>(&mut self, f: F)
     where
         F: Fn(char) -> bool,
@@ -98,8 +107,7 @@ impl<'src> Lexer<'src> {
                 break;
             };
 
-            if c == '*' && self.peek_char().is_some_and(|c| c == '/') {
-                self.next_char();
+            if c == '*' && self.eat_char('/') {
                 break;
             }
         }
