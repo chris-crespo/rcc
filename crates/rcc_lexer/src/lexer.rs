@@ -90,8 +90,8 @@ impl<'src> Lexer<'src> {
                     }
                     _ => self.make_token(TokenKind::Undetermined),
                 },
-                c if is_start_of_number(c) => self.parse_number(),
-                c if is_start_of_identifier(c) => self.parse_identifier(),
+                '0'..='9' => self.parse_number(),
+                'a'..='z' | 'A'..='Z' => self.parse_identifier(),
                 _ => self.make_token(TokenKind::Undetermined),
             };
         }
@@ -135,12 +135,4 @@ impl<'src> Lexer<'src> {
             _ => self.make_token(TokenKind::Identifier),
         }
     }
-}
-
-fn is_start_of_number(c: char) -> bool {
-    c.is_ascii_digit()
-}
-
-fn is_start_of_identifier(c: char) -> bool {
-    c.is_ascii_alphabetic()
 }
