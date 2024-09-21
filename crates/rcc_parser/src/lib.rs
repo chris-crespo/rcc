@@ -5,6 +5,8 @@ use rcc_interner::Interner;
 use rcc_lexer::{Lexer, Token, TokenKind};
 use rcc_span::Span;
 
+mod diagnostics;
+
 type Result<T> = std::result::Result<T, miette::Report>;
 
 pub struct Parser<'a, 'src> {
@@ -56,8 +58,21 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.curr_token = self.lexer.next_token();
     }
 
+    fn eat(&mut self, kind: TokenKind) -> bool {
+        if self.at(kind) {
+            self.bump();
+            return true;
+        }
+
+        false
+    }
+
+    fn at(&self, kind: TokenKind) -> bool {
+        self.curr_kind() == kind
+    }
+
     fn expect(&mut self, kind: TokenKind) -> Result<()> {
-        if self.curr_token.kind != kind {
+        if !self.at(kind) {
             return Err(self.expected(kind));
         }
 
@@ -67,16 +82,11 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn expected(&self, kind: TokenKind) -> miette::Report {
-        miette::MietteDiagnostic::new(format!(
-            "Expected `{}`, but found `{}`",
+        diagnostics::expected(
             kind.as_str(),
-            self.curr_kind().as_str()
-        ))
-        .with_label(miette::LabeledSpan::at(
-            self.curr_token.span.start as _..self.curr_token.span.end as _,
-            "",
-        ))
-        .into()
+            self.curr_kind().as_str(),
+            self.curr_token.span,
+        )
     }
 
     pub fn parse(mut self) -> Result<Program> {
@@ -137,7 +147,7 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_lit_number(&mut self) -> Result<Expression> {
-        if self.curr_kind() != TokenKind::Number {
+        if !self.at(TokenKind::Number) {
             return Err(self.expected(TokenKind::Number));
         }
 
@@ -157,7 +167,7 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_id(&mut self) -> Result<Identifier> {
-        if self.curr_kind() != TokenKind::Identifier {
+        if !self.at(TokenKind::Identifier) {
             return Err(self.expected(TokenKind::Identifier));
         }
 
