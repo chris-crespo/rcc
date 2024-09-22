@@ -19,6 +19,10 @@ pub enum TokenKind {
     RightParen,
     Semicolon,
 
+    Minus,
+    Minus2,
+    Tilde,
+
     Int,
     Return,
     Void,
@@ -37,6 +41,9 @@ impl TokenKind {
             TokenKind::LeftParen => "(",
             TokenKind::RightParen => ")",
             TokenKind::Semicolon => ";",
+            TokenKind::Minus => "-",
+            TokenKind::Minus2 => "--",
+            TokenKind::Tilde => "~",
             TokenKind::Int => "int",
             TokenKind::Return => "return",
             TokenKind::Void => "void",
