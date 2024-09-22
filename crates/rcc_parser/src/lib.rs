@@ -1,12 +1,20 @@
 use rcc_arena::Arena;
 use rcc_ast::{
-    AstBuilder, Expression, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement, Statement
+    AstBuilder, Expression, FunctionDeclaration, Identifier, Program, Statement, UnaryOperator,
 };
 use rcc_interner::Interner;
 use rcc_lexer::{Lexer, Token, TokenKind};
 use rcc_span::Span;
 
 mod diagnostics;
+
+fn map_unary_operator(kind: TokenKind) -> UnaryOperator {
+    match kind {
+        TokenKind::Minus => UnaryOperator::Negation,
+        TokenKind::Tilde => UnaryOperator::BitwiseComplement,
+        _ => unreachable!("Unary operator: {kind:?}"),
+    }
+}
 
 type Result<T> = std::result::Result<T, miette::Report>;
 
@@ -92,10 +100,14 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn expected(&self, kind: TokenKind) -> miette::Report {
         diagnostics::expected(
+            self.curr_token.span,
             kind.as_str(),
             self.curr_kind().as_str(),
-            self.curr_token.span,
         )
+    }
+
+    fn unexpected(&self) -> miette::Report {
+        diagnostics::unexpected(self.curr_token.span)
     }
 
     pub fn parse(mut self) -> Result<Program<'src>> {
@@ -151,10 +163,28 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_expr(&mut self) -> Result<Expression<'src>> {
-        self.parse_lit_number()
+        match self.curr_kind() {
+            TokenKind::Minus => self.parse_expr_unary(),
+            TokenKind::Tilde => self.parse_expr_unary(),
+            TokenKind::Number => self.parse_expr_number_lit(),
+            _ => Err(self.unexpected()),
+        }
     }
 
-    fn parse_lit_number(&mut self) -> Result<Expression<'src>> {
+    fn parse_expr_unary(&mut self) -> Result<Expression<'src>> {
+        let span = self.start_span();
+        let kind = self.curr_kind();
+
+        self.bump(); // Skip operator.
+
+        let op = map_unary_operator(kind);
+        let expr = self.parse_expr()?;
+
+        let expr = self.ast.expr_unary(span, op, expr);
+        Ok(expr)
+    }
+
+    fn parse_expr_number_lit(&mut self) -> Result<Expression<'src>> {
         if !self.at(TokenKind::Number) {
             return Err(self.expected(TokenKind::Number));
         }

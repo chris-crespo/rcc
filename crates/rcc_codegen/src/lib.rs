@@ -47,6 +47,7 @@ impl Codegen {
     fn codegen_expr(&self, expr: &ast::Expression) -> asm::Operand {
         match expr {
             ast::Expression::NumberLiteral(lit) => self.codegen_lit_number(lit),
+            ast::Expression::Unary(expr) => todo!()
         }
     }
 

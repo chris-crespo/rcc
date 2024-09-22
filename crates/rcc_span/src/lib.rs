@@ -31,3 +31,9 @@ impl From<Span> for SourceSpan {
         )
     }
 }
+
+impl From<Span> for LabeledSpan {
+    fn from(value: Span) -> Self {
+        LabeledSpan::underline(value)
+    }
+}

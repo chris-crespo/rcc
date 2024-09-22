@@ -27,7 +27,21 @@ pub struct ReturnStatement<'a> {
 
 #[derive(Debug)]
 pub enum Expression<'a> {
-    NumberLiteral(&'a NumberLiteral)
+    NumberLiteral(&'a NumberLiteral),
+    Unary(&'a UnaryExpression<'a>)
+}
+
+#[derive(Debug)]
+pub struct UnaryExpression<'a> {
+    pub span: Span,
+    pub op: UnaryOperator,
+    pub expr: Expression<'a>
+}
+
+#[derive(Debug)]
+pub enum UnaryOperator {
+    Negation,
+    BitwiseComplement
 }
 
 #[derive(Debug)]

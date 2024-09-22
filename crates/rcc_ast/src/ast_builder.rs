@@ -2,7 +2,8 @@ use rcc_arena::Arena;
 use rcc_span::Span;
 
 use crate::{
-    Expression, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement, Statement,
+    Expression, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement,
+    Statement, UnaryExpression, UnaryOperator,
 };
 
 pub struct AstBuilder<'a> {
@@ -39,6 +40,25 @@ impl<'a> AstBuilder<'a> {
 
     pub fn return_stmt(&self, span: Span, expr: Expression<'a>) -> ReturnStatement<'a> {
         ReturnStatement { span, expr }
+    }
+
+    pub fn expr_unary(
+        &self,
+        span: Span,
+        op: UnaryOperator,
+        expr: Expression<'a>,
+    ) -> Expression<'a> {
+        let unary_expr = self.unary_expr(span, op, expr);
+        Expression::Unary(self.alloc(unary_expr))
+    }
+
+    fn unary_expr(
+        &self,
+        span: Span,
+        op: UnaryOperator,
+        expr: Expression<'a>,
+    ) -> UnaryExpression<'a> {
+        UnaryExpression { span, op, expr }
     }
 
     pub fn expr_number_lit(&self, span: Span, value: u64) -> Expression<'a> {
