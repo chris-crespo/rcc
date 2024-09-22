@@ -166,6 +166,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         match self.curr_kind() {
             TokenKind::Minus => self.parse_expr_unary(),
             TokenKind::Tilde => self.parse_expr_unary(),
+            TokenKind::LeftParen => self.parse_expr_group(),
             TokenKind::Number => self.parse_expr_number_lit(),
             _ => Err(self.unexpected()),
         }
@@ -181,6 +182,15 @@ impl<'a, 'src> Parser<'a, 'src> {
         let expr = self.parse_expr()?;
 
         let expr = self.ast.expr_unary(span, op, expr);
+        Ok(expr)
+    }
+
+    fn parse_expr_group(&mut self) -> Result<Expression<'src>> {
+        self.bump(); // Skip left paren
+
+        let expr = self.parse_expr()?;
+        self.expect(TokenKind::RightParen)?;
+
         Ok(expr)
     }
 
