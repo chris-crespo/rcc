@@ -2,32 +2,32 @@ use rcc_interner::Symbol;
 use rcc_span::Span;
 
 #[derive(Debug)]
-pub struct Program {
+pub struct Program<'a> {
     pub span: Span,
-    pub func: FunctionDeclaration
+    pub func: FunctionDeclaration<'a>
 }
 
 #[derive(Debug)]
-pub struct FunctionDeclaration {
+pub struct FunctionDeclaration<'a> {
     pub span: Span,
     pub name: Identifier,
-    pub stmt: Statement
+    pub stmt: Statement<'a>
 }
 
 #[derive(Debug)]
-pub enum Statement {
-    Return(ReturnStatement)
+pub enum Statement<'a> {
+    Return(&'a ReturnStatement<'a>)
 }
 
 #[derive(Debug)]
-pub struct ReturnStatement {
+pub struct ReturnStatement<'a> {
     pub span: Span,
-    pub expr: Expression
+    pub expr: Expression<'a>
 }
 
 #[derive(Debug)]
-pub enum Expression {
-    NumberLiteral(NumberLiteral)
+pub enum Expression<'a> {
+    NumberLiteral(&'a NumberLiteral)
 }
 
 #[derive(Debug)]

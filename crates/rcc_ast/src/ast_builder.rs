@@ -1,0 +1,52 @@
+use rcc_arena::Arena;
+use rcc_span::Span;
+
+use crate::{
+    Expression, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement, Statement,
+};
+
+pub struct AstBuilder<'a> {
+    arena: &'a Arena,
+}
+
+impl<'a> AstBuilder<'a> {
+    pub fn new(arena: &'a Arena) -> AstBuilder<'a> {
+        AstBuilder { arena }
+    }
+
+    #[inline]
+    fn alloc<T>(&self, value: T) -> &'a T {
+        self.arena.alloc(value)
+    }
+
+    pub fn program(&self, span: Span, func: FunctionDeclaration<'a>) -> Program<'a> {
+        Program { span, func }
+    }
+
+    pub fn decl_func(
+        &self,
+        span: Span,
+        name: Identifier,
+        stmt: Statement<'a>,
+    ) -> FunctionDeclaration<'a> {
+        FunctionDeclaration { span, name, stmt }
+    }
+
+    pub fn stmt_return(&self, span: Span, expr: Expression<'a>) -> Statement<'a> {
+        let return_stmt = self.return_stmt(span, expr);
+        Statement::Return(self.alloc(return_stmt))
+    }
+
+    pub fn return_stmt(&self, span: Span, expr: Expression<'a>) -> ReturnStatement<'a> {
+        ReturnStatement { span, expr }
+    }
+
+    pub fn expr_number_lit(&self, span: Span, value: u64) -> Expression<'a> {
+        let number_lit = self.number_lit(span, value);
+        Expression::NumberLiteral(self.alloc(number_lit))
+    }
+
+    pub fn number_lit(&self, span: Span, value: u64) -> NumberLiteral {
+        NumberLiteral { span, value }
+    }
+}

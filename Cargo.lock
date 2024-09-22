@@ -97,6 +97,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
+name = "bumpalo"
+version = "3.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
+
+[[package]]
 name = "cc"
 version = "1.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -283,6 +289,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcc_arena"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+]
+
+[[package]]
 name = "rcc_asm"
 version = "0.1.0"
 dependencies = [
@@ -293,6 +306,7 @@ dependencies = [
 name = "rcc_ast"
 version = "0.1.0"
 dependencies = [
+ "rcc_arena",
  "rcc_interner",
  "rcc_span",
 ]
@@ -318,6 +332,7 @@ name = "rcc_driver"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "rcc_arena",
  "rcc_codeemit",
  "rcc_codegen",
  "rcc_interner",
@@ -341,6 +356,7 @@ name = "rcc_parser"
 version = "0.1.0"
 dependencies = [
  "miette",
+ "rcc_arena",
  "rcc_ast",
  "rcc_interner",
  "rcc_lexer",

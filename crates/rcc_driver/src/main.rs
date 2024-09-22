@@ -4,6 +4,7 @@ use std::{
 };
 
 use clap::Parser as _;
+use rcc_arena::Arena;
 use rcc_codeemit::CodeEmit;
 use rcc_codegen::Codegen;
 use rcc_interner::Interner;
@@ -68,8 +69,10 @@ fn lex(filename: &str) {
 fn parse(filename: &str) {
     let source = std::fs::read_to_string(filename).expect("Failed to read file.");
 
+    let arena = Arena::new();
     let mut interner = Interner::new();
-    let parser = Parser::new(&source, &mut interner);
+
+    let parser = Parser::new(&source, &arena, &mut interner);
     match parser.parse() {
         Ok(program) => println!("{:#?}", program),
         Err(err) => {
@@ -82,8 +85,10 @@ fn parse(filename: &str) {
 fn codegen(filename: &str) {
     let source = std::fs::read_to_string(filename).expect("Failed to read file.");
 
+    let arena = Arena::new();
     let mut interner = Interner::new();
-    let parser = Parser::new(&source, &mut interner);
+
+    let parser = Parser::new(&source, &arena, &mut interner);
     let program = match parser.parse() {
         Ok(program) => program,
         Err(err) => {
@@ -100,8 +105,10 @@ fn codegen(filename: &str) {
 fn compile(filename: &str) {
     let source = std::fs::read_to_string(filename).expect("Failed to read file.");
 
+    let arena = Arena::new();
     let mut interner = Interner::new();
-    let parser = Parser::new(&source, &mut interner);
+
+    let parser = Parser::new(&source, &arena, &mut interner);
     let program = match parser.parse() {
         Ok(program) => program,
         Err(err) => {

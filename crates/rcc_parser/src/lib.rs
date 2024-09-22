@@ -1,5 +1,6 @@
+use rcc_arena::Arena;
 use rcc_ast::{
-    Expression, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement, Statement,
+    AstBuilder, Expression, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement, Statement
 };
 use rcc_interner::Interner;
 use rcc_lexer::{Lexer, Token, TokenKind};
@@ -12,6 +13,8 @@ type Result<T> = std::result::Result<T, miette::Report>;
 pub struct Parser<'a, 'src> {
     source: &'src str,
     lexer: Lexer<'src>,
+
+    ast: AstBuilder<'src>,
     interner: &'a mut Interner<'src>,
 
     curr_token: Token,
@@ -19,10 +22,16 @@ pub struct Parser<'a, 'src> {
 }
 
 impl<'a, 'src> Parser<'a, 'src> {
-    pub fn new(source: &'src str, interner: &'a mut Interner<'src>) -> Parser<'a, 'src> {
+    pub fn new(
+        source: &'src str,
+        arena: &'src Arena,
+        interner: &'a mut Interner<'src>,
+    ) -> Parser<'a, 'src> {
         let mut parser = Parser {
             source,
             lexer: Lexer::new(source),
+
+            ast: AstBuilder::new(arena),
             interner,
 
             curr_token: Token::default(),
@@ -89,11 +98,11 @@ impl<'a, 'src> Parser<'a, 'src> {
         )
     }
 
-    pub fn parse(mut self) -> Result<Program> {
+    pub fn parse(mut self) -> Result<Program<'src>> {
         self.parse_program()
     }
 
-    fn parse_program(&mut self) -> Result<Program> {
+    fn parse_program(&mut self) -> Result<Program<'src>> {
         let span = self.start_span();
         let func = self.parse_function_declaration()?;
 
@@ -103,7 +112,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         Ok(program)
     }
 
-    fn parse_function_declaration(&mut self) -> Result<FunctionDeclaration> {
+    fn parse_function_declaration(&mut self) -> Result<FunctionDeclaration<'src>> {
         let span = self.start_span();
 
         self.expect(TokenKind::Int)?;
@@ -118,17 +127,17 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.expect(TokenKind::RightBrace)?;
 
         let span = self.end_span(span);
-        let decl = FunctionDeclaration { span, name, stmt };
+        let decl = self.ast.decl_func(span, name, stmt);
 
         Ok(decl)
     }
 
-    fn parse_stmt(&mut self) -> Result<Statement> {
+    fn parse_stmt(&mut self) -> Result<Statement<'src>> {
         let stmt = self.parse_stmt_return()?;
         Ok(stmt)
     }
 
-    fn parse_stmt_return(&mut self) -> Result<Statement> {
+    fn parse_stmt_return(&mut self) -> Result<Statement<'src>> {
         let span = self.start_span();
         self.expect(TokenKind::Return)?;
 
@@ -136,17 +145,16 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.expect(TokenKind::Semicolon)?;
 
         let span = self.end_span(span);
-        let return_stmt = ReturnStatement { span, expr };
+        let stmt = self.ast.stmt_return(span, expr);
 
-        let stmt = Statement::Return(return_stmt);
         Ok(stmt)
     }
 
-    fn parse_expr(&mut self) -> Result<Expression> {
+    fn parse_expr(&mut self) -> Result<Expression<'src>> {
         self.parse_lit_number()
     }
 
-    fn parse_lit_number(&mut self) -> Result<Expression> {
+    fn parse_lit_number(&mut self) -> Result<Expression<'src>> {
         if !self.at(TokenKind::Number) {
             return Err(self.expected(TokenKind::Number));
         }
@@ -160,9 +168,8 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.bump();
 
         let span = self.end_span(span);
-        let number_lit = NumberLiteral { span, value };
+        let expr = self.ast.expr_number_lit(span, value);
 
-        let expr = Expression::NumberLiteral(number_lit);
         Ok(expr)
     }
 

@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+rcc_arena    = { workspace = true }
 rcc_ast      = { workspace = true }
 rcc_interner = { workspace = true }
 rcc_lexer    = { workspace = true }

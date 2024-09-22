@@ -7,6 +7,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
+rcc_arena    = { path = "./crates/rcc_arena/" }
 rcc_asm      = { path = "./crates/rcc_asm" }
 rcc_ast      = { path = "./crates/rcc_ast/" }
 rcc_codeemit = { path = "./crates/rcc_codeemit/" }
@@ -16,5 +17,6 @@ rcc_lexer    = { path = "./crates/rcc_lexer/" }
 rcc_parser   = { path = "./crates/rcc_parser/" }
 rcc_span     = { path = "./crates/rcc_span/" }
 
+bumpalo = { version = "3.16.0" }
 clap   = { version = "4.5.17", features = ["derive"] }
 miette = { version = "7.2.0", features = ["fancy"] }
