@@ -55,7 +55,7 @@ impl Codegen {
         asm::Operand::Imm(imm)
     }
 
-    fn codegen_id(&self, id: &ast::Identifier) -> asm::Identifier {
-        asm::Identifier { symbol: id.symbol }
+    fn codegen_id(&self, id: &ast::Identifier) -> asm::Label {
+        asm::Label { symbol: id.symbol }
     }
 }

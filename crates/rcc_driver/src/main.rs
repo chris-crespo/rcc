@@ -1,6 +1,10 @@
-use std::process::{Child, Command, Stdio};
+use std::{
+    fs::File,
+    process::{Child, Command, Stdio},
+};
 
 use clap::Parser as _;
+use rcc_codeemit::CodeEmit;
 use rcc_codegen::Codegen;
 use rcc_interner::Interner;
 use rcc_lexer::{Lexer, TokenKind};
@@ -88,7 +92,11 @@ fn codegen(filename: &str) {
 
     let codegen = Codegen::new();
     let asm = codegen.codegen(&program);
-    println!("{:#?}", asm)
+    println!("{:#?}", asm);
+
+    let file = File::create(filename.replace(".c", ".s")).expect("Failed to create output file");
+    let codeemit = CodeEmit::new(&file, &interner);
+    codeemit.emit(&asm).expect("Failed to emit assembly.");
 }
 
 fn spawn_preprocessor(filename: &str) -> std::io::Result<Child> {

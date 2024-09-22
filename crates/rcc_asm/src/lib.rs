@@ -7,7 +7,7 @@ pub struct Program {
 
 #[derive(Debug)]
 pub struct FunctionDeclaration {
-    pub name: Identifier,
+    pub name: Label,
     pub instructions: Vec<Instruction>
 }
 
@@ -35,6 +35,6 @@ pub struct ImmOperand {
 }
 
 #[derive(Debug)]
-pub struct Identifier {
+pub struct Label {
     pub symbol: Symbol
 }

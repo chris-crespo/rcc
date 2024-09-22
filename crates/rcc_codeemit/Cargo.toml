@@ -1,0 +1,8 @@
+[package]
+name = "rcc_codeemit"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rcc_asm      = { workspace = true }
+rcc_interner = { workspace = true }

@@ -298,6 +298,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcc_codeemit"
+version = "0.1.0"
+dependencies = [
+ "rcc_asm",
+ "rcc_interner",
+]
+
+[[package]]
 name = "rcc_codegen"
 version = "0.1.0"
 dependencies = [
@@ -310,6 +318,7 @@ name = "rcc_driver"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "rcc_codeemit",
  "rcc_codegen",
  "rcc_interner",
  "rcc_lexer",
