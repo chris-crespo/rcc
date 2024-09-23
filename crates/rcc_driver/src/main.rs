@@ -6,8 +6,6 @@ use std::{
 use clap::Parser as _;
 use rcc_arena::Arena;
 use rcc_ast_lowering::lower_to_tac;
-use rcc_codeemit::CodeEmit;
-use rcc_codegen::Codegen;
 use rcc_interner::Interner;
 use rcc_lexer::{Lexer, TokenKind};
 use rcc_parser::Parser;
@@ -31,7 +29,7 @@ struct Cli {
     codegen: bool,
 
     #[clap(long, group = "option")]
-    tacky: bool
+    tacky: bool,
 }
 
 fn main() {
@@ -52,7 +50,8 @@ fn main() {
         assemble(
             &args.filename.replace(".c", ".s"),
             args.filename.trim_end_matches(".c"),
-        ).expect("Failed to assemble program.");
+        )
+        .expect("Failed to assemble program.");
     }
 }
 
@@ -122,8 +121,7 @@ fn codegen(filename: &str) {
         }
     };
 
-    let codegen = Codegen::new();
-    let asm = codegen.codegen(&program);
+    let asm = rcc_codegen::codegen(&program);
     println!("{:#?}", asm);
 }
 
@@ -142,12 +140,10 @@ fn compile(filename: &str) {
         }
     };
 
-    let codegen = Codegen::new();
-    let asm = codegen.codegen(&program);
+    let asm = rcc_codegen::codegen(&program);
 
     let file = File::create(filename.replace(".c", ".s")).expect("Failed to create output file");
-    let codeemit = CodeEmit::new(&file, &interner);
-    codeemit.emit(&asm).expect("Failed to emit assembly.");
+    rcc_codeemit::emit(&asm, &file, &mut interner).expect("Failed to emit assembly.");
 }
 
 fn spawn_preprocessor(filename: &str) -> std::io::Result<Child> {
