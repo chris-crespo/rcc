@@ -28,7 +28,7 @@ fn codegen_stmt_return(stmt: &ast::ReturnStatement) -> Vec<asm::Instruction> {
 
     let mov = asm::MovInstruction {
         src: codegen_expr(&stmt.expr),
-        dest: asm::Operand::Register,
+        dest: asm::Operand::Register(asm::RegisterOperand::Ax),
     };
 
     instrs.push(asm::Instruction::Mov(mov));
