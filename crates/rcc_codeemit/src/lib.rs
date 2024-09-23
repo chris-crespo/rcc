@@ -7,82 +7,84 @@ use std::{
 use rcc_asm::{FunctionDeclaration, ImmOperand, Instruction, MovInstruction, Operand, Program};
 use rcc_interner::Interner;
 
-pub struct CodeEmit<'a> {
-    interner: &'a Interner<'a>,
-    writer: BufWriter<&'a File>,
+struct EmitContext<'a> {
+    interner: &'a mut Interner<'a>,
+    output: BufWriter<&'a File>,
 }
 
-impl<'a> CodeEmit<'a> {
-    pub fn new(file: &'a File, interner: &'a Interner<'a>) -> CodeEmit<'a> {
-        CodeEmit {
+impl<'a> EmitContext<'a> {
+    pub fn new(output: &'a File, interner: &'a mut Interner<'a>) -> EmitContext<'a> {
+        EmitContext {
+            output: BufWriter::new(output),
             interner,
-            writer: BufWriter::new(file),
         }
     }
+}
 
-    pub fn emit(mut self, program: &Program) -> io::Result<()> {
-        self.emit_program(program)
+pub fn emit<'a>(
+    program: &Program,
+    output: &'a File,
+    interner: &'a mut Interner<'a>,
+) -> io::Result<()> {
+    let mut ctx = EmitContext::new(output, interner);
+    emit_program(&mut ctx, program)
+}
+
+fn emit_program(ctx: &mut EmitContext, program: &Program) -> io::Result<()> {
+    emit_decl_func(ctx, &program.func)?;
+
+    #[cfg(target_os = "linux")]
+    emit_gnu_stack_hardening(ctx)?;
+
+    Ok(())
+}
+
+fn emit_decl_func(ctx: &mut EmitContext, decl: &FunctionDeclaration) -> io::Result<()> {
+    let label = ctx.interner.get(decl.name.symbol);
+    #[cfg(target_os = "macos")]
+    let label = if id == "main" { "_main" } else { id };
+
+    writeln!(ctx.output, "    .global {}", label)?;
+    emit_label(ctx, label)?;
+    emit_instrs(ctx, &decl.instructions)?;
+
+    Ok(())
+}
+
+fn emit_instrs(ctx: &mut EmitContext, instrs: &[Instruction]) -> io::Result<()> {
+    for instr in instrs {
+        emit_instr(ctx, instr)?;
     }
 
-    fn emit_program(&mut self, program: &Program) -> io::Result<()> {
-        self.emit_decl_func(&program.func)?;
+    Ok(())
+}
 
-        #[cfg(target_os = "linux")]
-        self.emit_gnu_stack_hardening()?;
-
-        Ok(())
+fn emit_instr(ctx: &mut EmitContext, instr: &Instruction) -> io::Result<()> {
+    match instr {
+        Instruction::Mov(instr) => emit_instr_mov(ctx, instr),
+        Instruction::Ret => emit_instr_ret(ctx),
     }
+}
 
-    fn emit_decl_func(&mut self, decl: &FunctionDeclaration) -> io::Result<()> {
-        let label = self.interner.get(decl.name.symbol);
-        #[cfg(target_os = "macos")]
-        let label = if id == "main" { "_main" } else { id };
+fn emit_instr_mov(ctx: &mut EmitContext, instr: &MovInstruction) -> io::Result<()> {
+    let src = format_operand(&instr.src);
+    let dest = format_operand(&instr.dest);
 
-        writeln!(self.writer, "    .global {}", label)?;
-        self.emit_label(label)?;
-        self.emit_instrs(&decl.instructions)?;
+    writeln!(ctx.output, "    movl {}, {}", src, dest)?;
 
-        Ok(())
-    }
+    Ok(())
+}
 
-    fn emit_instrs(&mut self, instrs: &[Instruction]) -> io::Result<()> {
-        for instr in instrs {
-            self.emit_instr(instr)?;
-        }
+fn emit_instr_ret(ctx: &mut EmitContext) -> io::Result<()> {
+    writeln!(ctx.output, "    ret")
+}
 
-        Ok(())
-    }
+fn emit_label(ctx: &mut EmitContext, label: &str) -> io::Result<()> {
+    writeln!(ctx.output, "{}:", label)
+}
 
-    fn emit_instr(&mut self, instr: &Instruction) -> io::Result<()> {
-        match instr {
-            Instruction::Mov(instr) => self.emit_instr_mov(instr),
-            Instruction::Ret => self.emit_instr_ret(),
-        }
-    }
-
-    fn emit_instr_mov(&mut self, instr: &MovInstruction) -> io::Result<()> {
-        let src = format_operand(&instr.src);
-        let dest = format_operand(&instr.dest);
-
-        writeln!(self.writer, "    movl {}, {}", src, dest)?;
-
-        Ok(())
-    }
-
-    fn emit_instr_ret(&mut self) -> io::Result<()> {
-        writeln!(self.writer, "    ret")
-    }
-
-    fn emit_label(&mut self, label: &str) -> io::Result<()> {
-        writeln!(self.writer, "{}:", label)
-    }
-
-    fn emit_gnu_stack_hardening(&mut self) -> io::Result<()> {
-        writeln!(
-            self.writer,
-            "    .section .note.GNU-stack,\"\", @progbits\n"
-        )
-    }
+fn emit_gnu_stack_hardening(ctx: &mut EmitContext) -> io::Result<()> {
+    writeln!(ctx.output, "    .section .note.GNU-stack,\"\", @progbits\n")
 }
 
 fn format_operand(operand: &Operand) -> Cow<'_, str> {
