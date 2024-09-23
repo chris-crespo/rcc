@@ -7,15 +7,17 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
-rcc_arena    = { path = "./crates/rcc_arena/" }
-rcc_asm      = { path = "./crates/rcc_asm" }
-rcc_ast      = { path = "./crates/rcc_ast/" }
-rcc_codeemit = { path = "./crates/rcc_codeemit/" }
-rcc_codegen  = { path = "./crates/rcc_codegen/" }
-rcc_interner = { path = "./crates/rcc_interner/" }
-rcc_lexer    = { path = "./crates/rcc_lexer/" }
-rcc_parser   = { path = "./crates/rcc_parser/" }
-rcc_span     = { path = "./crates/rcc_span/" }
+rcc_arena        = { path = "./crates/rcc_arena/" }
+rcc_asm          = { path = "./crates/rcc_asm" }
+rcc_ast          = { path = "./crates/rcc_ast/" }
+rcc_ast_lowering = { path = "./crates/rcc_ast_lowering" }
+rcc_codeemit     = { path = "./crates/rcc_codeemit/" }
+rcc_codegen      = { path = "./crates/rcc_codegen/" }
+rcc_interner     = { path = "./crates/rcc_interner/" }
+rcc_lexer        = { path = "./crates/rcc_lexer/" }
+rcc_parser       = { path = "./crates/rcc_parser/" }
+rcc_span         = { path = "./crates/rcc_span/" }
+rcc_tac          = { path = "./crates/rcc_tac/" }
 
 bumpalo = { version = "3.16.0" }
 clap   = { version = "4.5.17", features = ["derive"] }

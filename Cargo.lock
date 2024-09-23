@@ -312,6 +312,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcc_ast_lowering"
+version = "0.1.0"
+dependencies = [
+ "rcc_ast",
+ "rcc_tac",
+]
+
+[[package]]
 name = "rcc_codeemit"
 version = "0.1.0"
 dependencies = [
@@ -333,6 +341,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "rcc_arena",
+ "rcc_ast_lowering",
  "rcc_codeemit",
  "rcc_codegen",
  "rcc_interner",
@@ -368,6 +377,13 @@ name = "rcc_span"
 version = "0.1.0"
 dependencies = [
  "miette",
+]
+
+[[package]]
+name = "rcc_tac"
+version = "0.1.0"
+dependencies = [
+ "rcc_interner",
 ]
 
 [[package]]

@@ -1,0 +1,8 @@
+[package]
+name = "rcc_ast_lowering"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rcc_ast      = { workspace = true }
+rcc_tac      = { workspace = true }

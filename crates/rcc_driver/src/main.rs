@@ -5,6 +5,7 @@ use std::{
 
 use clap::Parser as _;
 use rcc_arena::Arena;
+use rcc_ast_lowering::lower_to_tac;
 use rcc_codeemit::CodeEmit;
 use rcc_codegen::Codegen;
 use rcc_interner::Interner;
@@ -28,6 +29,9 @@ struct Cli {
 
     #[clap(long, group = "option")]
     codegen: bool,
+
+    #[clap(long, group = "option")]
+    tacky: bool
 }
 
 fn main() {
@@ -37,6 +41,8 @@ fn main() {
         lex(&args.filename);
     } else if args.parse {
         parse(&args.filename);
+    } else if args.tacky {
+        tacky(&args.filename)
     } else if args.codegen {
         codegen(&args.filename)
     } else if args.compile {
@@ -80,6 +86,25 @@ fn parse(filename: &str) {
             std::process::exit(1)
         }
     }
+}
+
+fn tacky(filename: &str) {
+    let source = std::fs::read_to_string(filename).expect("Failed to read file.");
+
+    let arena = Arena::new();
+    let mut interner = Interner::new();
+
+    let parser = Parser::new(&source, &arena, &mut interner);
+    let program = match parser.parse() {
+        Ok(program) => program,
+        Err(err) => {
+            println!("{:?}", err.with_source_code(source.clone()));
+            std::process::exit(1)
+        }
+    };
+
+    let tac = lower_to_tac(&program);
+    println!("{:#?}", tac);
 }
 
 fn codegen(filename: &str) {

@@ -38,7 +38,7 @@ pub struct UnaryExpression<'a> {
     pub expr: Expression<'a>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum UnaryOperator {
     Negation,
     BitwiseComplement
