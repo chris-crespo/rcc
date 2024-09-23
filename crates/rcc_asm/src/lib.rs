@@ -8,21 +8,16 @@ pub struct Program {
 #[derive(Debug)]
 pub struct FunctionDeclaration {
     pub name: Label,
+    pub stack_size: u32,
     pub instructions: Vec<Instruction>
 }
 
 #[derive(Debug)]
 pub enum Instruction {
-    AllocStack(AllocStackInstruction),
     Mov(MovInstruction),
     Neg(NegInstruction),
     Not(NotInstruction),
     Ret
-}
-
-#[derive(Debug)]
-pub struct AllocStackInstruction {
-    pub size: u32
 }
 
 #[derive(Debug)]
@@ -41,30 +36,30 @@ pub struct NotInstruction {
     pub dest: Operand
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Operand {
     Imm(ImmOperand),
     Register(RegisterOperand),
     Stack(StackOperand)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ImmOperand {
     pub value: u64
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RegisterOperand {
     Ax,
     R10
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct StackOperand {
     pub offset: u32
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Label {
     pub symbol: Symbol
 }

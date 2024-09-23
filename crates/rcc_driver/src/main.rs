@@ -121,7 +121,8 @@ fn codegen(filename: &str) {
         }
     };
 
-    let asm = rcc_codegen::codegen(&program);
+    let tac = lower_to_tac(&program);
+    let asm = rcc_codegen::codegen(&tac);
     println!("{:#?}", asm);
 }
 
@@ -140,7 +141,8 @@ fn compile(filename: &str) {
         }
     };
 
-    let asm = rcc_codegen::codegen(&program);
+    let tac = lower_to_tac(&program);
+    let asm = rcc_codegen::codegen(&tac);
 
     let file = File::create(filename.replace(".c", ".s")).expect("Failed to create output file");
     rcc_codeemit::emit(&asm, &file, &mut interner).expect("Failed to emit assembly.");

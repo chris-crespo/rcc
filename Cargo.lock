@@ -332,7 +332,7 @@ name = "rcc_codegen"
 version = "0.1.0"
 dependencies = [
  "rcc_asm",
- "rcc_ast",
+ "rcc_tac",
 ]
 
 [[package]]

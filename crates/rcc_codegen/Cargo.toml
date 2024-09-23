@@ -5,4 +5,4 @@ edition.workspace = true
 
 [dependencies]
 rcc_asm = { workspace = true }
-rcc_ast = { workspace = true }
+rcc_tac = { workspace = true }

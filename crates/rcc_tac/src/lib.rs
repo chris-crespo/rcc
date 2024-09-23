@@ -2,8 +2,6 @@ use rcc_interner::Symbol;
 
 mod tac_impl;
 
-pub use tac_impl::*;
-
 #[derive(Debug)]
 pub struct Program {
     pub func: FunctionDeclaration
@@ -50,12 +48,12 @@ pub struct Constant {
     pub value: u64
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Variable {
     Temp(TempVar)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TempVar(u32);
 
 #[derive(Debug, Clone, Copy)]

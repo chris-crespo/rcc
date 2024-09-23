@@ -1,54 +1,150 @@
-use rcc_asm as asm;
-use rcc_ast as ast;
+use std::collections::HashMap;
 
-pub fn codegen(program: &ast::Program) -> asm::Program {
-    codegen_program(program)
+use rcc_asm as asm;
+use rcc_tac::{self as tac, UnaryInstruction};
+
+struct CodegenContext {
+    instrs: Vec<asm::Instruction>,
+    stack_offsets: HashMap<tac::Variable, u32>,
 }
 
-fn codegen_program(program: &ast::Program) -> asm::Program {
-    let func = codegen_decl_func(&program.func);
+impl CodegenContext {
+    fn new() -> CodegenContext {
+        CodegenContext {
+            instrs: Vec::new(),
+            stack_offsets: HashMap::new(),
+        }
+    }
+
+    fn take_instrs(&mut self) -> Vec<asm::Instruction> {
+        std::mem::take(&mut self.instrs)
+    }
+
+    fn stack_offset(&mut self, var: tac::Variable) -> asm::StackOperand {
+        if let Some(&offset) = self.stack_offsets.get(&var) {
+            return asm::StackOperand { offset };
+        }
+
+        let offset = self.stack_size();
+        self.stack_offsets.insert(var, offset);
+
+        asm::StackOperand { offset }
+    }
+
+    fn stack_size(&self) -> u32 {
+        (self.stack_offsets.len() as u32 + 1) * 4
+    }
+}
+
+pub fn codegen(program: &tac::Program) -> asm::Program {
+    let mut ctx = CodegenContext::new();
+    codegen_program(&mut ctx, program)
+}
+
+fn codegen_program(ctx: &mut CodegenContext, program: &tac::Program) -> asm::Program {
+    let func = codegen_decl_func(ctx, &program.func);
     asm::Program { func }
 }
 
-fn codegen_decl_func(decl: &ast::FunctionDeclaration) -> asm::FunctionDeclaration {
+fn codegen_decl_func(
+    ctx: &mut CodegenContext,
+    decl: &tac::FunctionDeclaration,
+) -> asm::FunctionDeclaration {
+    codegen_instrs(ctx, &decl.body);
+
     let name = codegen_id(&decl.name);
-    let instructions = codegen_stmt(&decl.stmt);
+    let stack_size = ctx.stack_size();
+    let instrs = ctx.take_instrs();
 
-    asm::FunctionDeclaration { name, instructions }
-}
-
-fn codegen_stmt(stmt: &ast::Statement) -> Vec<asm::Instruction> {
-    match stmt {
-        ast::Statement::Return(stmt) => codegen_stmt_return(stmt),
+    asm::FunctionDeclaration {
+        name,
+        stack_size,
+        instructions: instrs,
     }
 }
 
-fn codegen_stmt_return(stmt: &ast::ReturnStatement) -> Vec<asm::Instruction> {
-    let mut instrs = Vec::new();
+fn codegen_instrs(ctx: &mut CodegenContext, instrs: &[tac::Instruction]) {
+    for instr in instrs {
+        codegen_instr(ctx, instr);
+    }
+}
 
-    let mov = asm::MovInstruction {
-        src: codegen_expr(&stmt.expr),
+fn codegen_instr(ctx: &mut CodegenContext, instr: &tac::Instruction) {
+    match instr {
+        tac::Instruction::Return(instr) => codegen_return_instr(ctx, instr),
+        tac::Instruction::Unary(instr) => codegen_unary_instr(ctx, instr),
+    }
+}
+
+fn codegen_return_instr(ctx: &mut CodegenContext, instr: &tac::ReturnInstruction) {
+    let src = codegen_value(ctx, &instr.value);
+    let mov = asm::Instruction::Mov(asm::MovInstruction {
+        src,
         dest: asm::Operand::Register(asm::RegisterOperand::Ax),
+    });
+    let ret = asm::Instruction::Ret;
+
+    ctx.instrs.push(mov);
+    ctx.instrs.push(ret);
+}
+
+fn codegen_unary_instr(ctx: &mut CodegenContext, instr: &tac::UnaryInstruction) {
+    let src = codegen_value(ctx, &instr.src);
+    let dest = if matches!(src, asm::Operand::Imm(_)) {
+        let dest = codegen_variable(ctx, &instr.dest);
+        let mov = asm::Instruction::Mov(asm::MovInstruction { src, dest });
+
+        ctx.instrs.push(mov);
+
+        dest
+    } else {
+        let mov = asm::Instruction::Mov(asm::MovInstruction {
+            src,
+            dest: asm::Operand::Register(asm::RegisterOperand::R10),
+        });
+
+        ctx.instrs.push(mov);
+
+        let dest = codegen_variable(ctx, &instr.dest);
+        let mov2 = asm::Instruction::Mov(asm::MovInstruction {
+            src: asm::Operand::Register(asm::RegisterOperand::R10),
+            dest,
+        });
+
+        ctx.instrs.push(mov2);
+
+        dest
     };
 
-    instrs.push(asm::Instruction::Mov(mov));
-    instrs.push(asm::Instruction::Ret);
+    let unary = match instr.op {
+        tac::UnaryOperator::Negation => asm::Instruction::Neg(asm::NegInstruction { dest }),
+        tac::UnaryOperator::BitwiseComplement => {
+            asm::Instruction::Not(asm::NotInstruction { dest })
+        }
+    };
 
-    instrs
+    ctx.instrs.push(unary);
 }
 
-fn codegen_expr(expr: &ast::Expression) -> asm::Operand {
-    match expr {
-        ast::Expression::NumberLiteral(lit) => codegen_lit_number(lit),
-        ast::Expression::Unary(expr) => todo!(),
+fn codegen_value(ctx: &mut CodegenContext, value: &tac::Value) -> asm::Operand {
+    match value {
+        tac::Value::Constant(value) => codegen_constant(value),
+        tac::Value::Variable(value) => codegen_variable(ctx, value),
     }
 }
 
-fn codegen_lit_number(lit: &ast::NumberLiteral) -> asm::Operand {
-    let imm = asm::ImmOperand { value: lit.value };
-    asm::Operand::Imm(imm)
+fn codegen_constant(constant: &tac::Constant) -> asm::Operand {
+    let imm_op = asm::ImmOperand {
+        value: constant.value,
+    };
+    asm::Operand::Imm(imm_op)
 }
 
-fn codegen_id(id: &ast::Identifier) -> asm::Label {
+fn codegen_variable(ctx: &mut CodegenContext, var: &tac::Variable) -> asm::Operand {
+    let stack_op = ctx.stack_offset(*var);
+    asm::Operand::Stack(stack_op)
+}
+
+fn codegen_id(id: &tac::Identifier) -> asm::Label {
     asm::Label { symbol: id.symbol }
 }
