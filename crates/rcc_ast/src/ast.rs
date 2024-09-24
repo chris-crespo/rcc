@@ -28,7 +28,25 @@ pub struct ReturnStatement<'a> {
 #[derive(Debug)]
 pub enum Expression<'a> {
     NumberLiteral(&'a NumberLiteral),
+    Binary(&'a BinaryExpression<'a>),
     Unary(&'a UnaryExpression<'a>)
+}
+
+#[derive(Debug)]
+pub struct BinaryExpression<'a> {
+    pub span: Span,
+    pub op: BinaryOperator,
+    pub lhs: Expression<'a>,
+    pub rhs: Expression<'a>
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BinaryOperator {
+    Add,
+    Substract,
+    Multiply,
+    Divide,
+    Remainder
 }
 
 #[derive(Debug)]

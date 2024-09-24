@@ -73,6 +73,7 @@ fn lower_expr(
 ) -> tac::Value {
     match expr {
         ast::Expression::NumberLiteral(lit) => map_number_literal(lit),
+        ast::Expression::Binary(expr) => todo!("Lower binary expr {:?}", expr),
         ast::Expression::Unary(expr) => lower_unary_expr(ctx, expr),
     }
 }

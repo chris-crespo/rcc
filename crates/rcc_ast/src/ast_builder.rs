@@ -1,9 +1,11 @@
+use std::fmt::Binary;
+
 use rcc_arena::Arena;
 use rcc_span::Span;
 
 use crate::{
-    Expression, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement,
-    Statement, UnaryExpression, UnaryOperator,
+    BinaryExpression, BinaryOperator, Expression, FunctionDeclaration, Identifier, NumberLiteral,
+    Program, ReturnStatement, Statement, UnaryExpression, UnaryOperator,
 };
 
 pub struct AstBuilder<'a> {
@@ -40,6 +42,27 @@ impl<'a> AstBuilder<'a> {
 
     pub fn return_stmt(&self, span: Span, expr: Expression<'a>) -> ReturnStatement<'a> {
         ReturnStatement { span, expr }
+    }
+
+    pub fn expr_binary(
+        &self,
+        span: Span,
+        op: BinaryOperator,
+        lhs: Expression<'a>,
+        rhs: Expression<'a>,
+    ) -> Expression<'a> {
+        let binary_expr = self.binary_expr(span, op, lhs, rhs);
+        Expression::Binary(self.alloc(binary_expr))
+    }
+
+    pub fn binary_expr(
+        &self,
+        span: Span,
+        op: BinaryOperator,
+        lhs: Expression<'a>,
+        rhs: Expression<'a>,
+    ) -> BinaryExpression<'a> {
+        BinaryExpression { span, op, lhs, rhs }
     }
 
     pub fn expr_unary(

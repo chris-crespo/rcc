@@ -1,6 +1,7 @@
 use rcc_arena::Arena;
 use rcc_ast::{
-    AstBuilder, Expression, FunctionDeclaration, Identifier, Program, Statement, UnaryOperator,
+    AstBuilder, BinaryOperator, Expression, FunctionDeclaration, Identifier, Program, Statement,
+    UnaryOperator,
 };
 use rcc_interner::Interner;
 use rcc_lexer::{Lexer, Token, TokenKind};
@@ -13,6 +14,34 @@ fn map_unary_operator(kind: TokenKind) -> UnaryOperator {
         TokenKind::Minus => UnaryOperator::Negation,
         TokenKind::Tilde => UnaryOperator::BitwiseComplement,
         _ => unreachable!("Unary operator: {kind:?}"),
+    }
+}
+
+fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
+    match kind {
+        TokenKind::Plus => BinaryOperator::Add,
+        TokenKind::Minus => BinaryOperator::Substract,
+        TokenKind::Star => BinaryOperator::Multiply,
+        TokenKind::Slash => BinaryOperator::Divide,
+        TokenKind::Percent => BinaryOperator::Remainder,
+        _ => unreachable!("Binary operatoor: {kind:?}"),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Precedence {
+    None,
+    Term,
+    Factor,
+}
+
+impl From<TokenKind> for Precedence {
+    fn from(value: TokenKind) -> Self {
+        match value {
+            TokenKind::Plus | TokenKind::Minus => Precedence::Term,
+            TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Precedence::Factor,
+            _ => Precedence::None,
+        }
     }
 }
 
@@ -60,6 +89,10 @@ impl<'a, 'src> Parser<'a, 'src> {
         // Safety: spans comes from the lexer, which are guaranteed
         // to satisfy the `get_unchecked` conditions.
         unsafe { self.source.get_unchecked(span.start as _..span.end as _) }
+    }
+
+    fn curr_prec(&self) -> Precedence {
+        Precedence::from(self.curr_kind())
     }
 
     fn start_span(&self) -> Span {
@@ -162,7 +195,22 @@ impl<'a, 'src> Parser<'a, 'src> {
         Ok(stmt)
     }
 
+    #[inline(always)]
     fn parse_expr(&mut self) -> Result<Expression<'src>> {
+        self.parse_expr_(Precedence::None)
+    }
+
+    fn parse_expr_(&mut self, prec: Precedence) -> Result<Expression<'src>> {
+        let mut lhs = self.parse_expr_lhs()?;
+
+        while prec < self.curr_prec() {
+            lhs = self.parse_expr_infix(lhs)?;
+        }
+
+        Ok(lhs)
+    }
+
+    fn parse_expr_lhs(&mut self) -> Result<Expression<'src>> {
         match self.curr_kind() {
             TokenKind::Minus => self.parse_expr_unary(),
             TokenKind::Tilde => self.parse_expr_unary(),
@@ -170,6 +218,20 @@ impl<'a, 'src> Parser<'a, 'src> {
             TokenKind::Number => self.parse_expr_number_lit(),
             _ => Err(self.unexpected()),
         }
+    }
+
+    fn parse_expr_infix(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
+        let span = self.start_span();
+        let kind = self.curr_kind();
+
+        self.bump(); // Skip operator.
+
+        let op = map_binary_operator(kind);
+        let rhs = self.parse_expr_(Precedence::from(kind))?;
+
+        let span = self.end_span(span);
+        let expr = self.ast.expr_binary(span, op, lhs, rhs);
+        Ok(expr)
     }
 
     fn parse_expr_unary(&mut self) -> Result<Expression<'src>> {
