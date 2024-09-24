@@ -4,7 +4,7 @@ use std::{
     io::{self, BufWriter, Write},
 };
 
-use rcc_asm::{FunctionDeclaration, ImmOperand, Instruction, MovInstruction, Operand, Program, RegisterOperand, StackOperand};
+use rcc_asm::{FunctionDeclaration, ImmOperand, Instruction, MovInstruction, NegInstruction, NotInstruction, Operand, Program, RegisterOperand, StackOperand};
 use rcc_interner::Interner;
 
 struct EmitContext<'a> {
@@ -46,7 +46,16 @@ fn emit_decl_func(ctx: &mut EmitContext, decl: &FunctionDeclaration) -> io::Resu
 
     writeln!(ctx.output, "    .global {}", label)?;
     emit_label(ctx, label)?;
+    emit_prelude(ctx, decl)?;
     emit_instrs(ctx, &decl.instructions)?;
+
+    Ok(())
+}
+
+fn emit_prelude(ctx: &mut EmitContext, decl: &FunctionDeclaration) -> io::Result<()> {
+    writeln!(ctx.output, "    pushq %rbp")?;
+    writeln!(ctx.output, "    movq %rsp, %rbp")?;
+    writeln!(ctx.output, "    subq ${}, %rsp", decl.stack_size)?;
 
     Ok(())
 }
@@ -62,8 +71,9 @@ fn emit_instrs(ctx: &mut EmitContext, instrs: &[Instruction]) -> io::Result<()> 
 fn emit_instr(ctx: &mut EmitContext, instr: &Instruction) -> io::Result<()> {
     match instr {
         Instruction::Mov(instr) => emit_instr_mov(ctx, instr),
+        Instruction::Neg(instr) => emit_instr_neg(ctx, instr),
+        Instruction::Not(instr) => emit_instr_not(ctx, instr),
         Instruction::Ret => emit_instr_ret(ctx),
-        instr => todo!("Emit {:?}", instr),
     }
 }
 
@@ -76,8 +86,22 @@ fn emit_instr_mov(ctx: &mut EmitContext, instr: &MovInstruction) -> io::Result<(
     Ok(())
 }
 
+fn emit_instr_neg(ctx: &mut EmitContext, instr: &NegInstruction) -> io::Result<()> {
+    let dest = format_operand(&instr.dest);
+    writeln!(ctx.output, "    negl {}", dest)
+}
+
+fn emit_instr_not(ctx: &mut EmitContext, instr: &NotInstruction) -> io::Result<()> {
+    let dest = format_operand(&instr.dest);
+    writeln!(ctx.output, "    notl {}", dest)
+}
+
 fn emit_instr_ret(ctx: &mut EmitContext) -> io::Result<()> {
-    writeln!(ctx.output, "    ret")
+    writeln!(ctx.output, "    movq %rbp, %rsp")?;
+    writeln!(ctx.output, "    popq %rbp")?;
+    writeln!(ctx.output, "    ret")?;
+
+    Ok(())
 }
 
 fn emit_label(ctx: &mut EmitContext, label: &str) -> io::Result<()> {
