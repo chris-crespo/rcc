@@ -9,5 +9,19 @@ This compiler is not intended to match the capabilities of those such as `gcc` o
 - [x] Minimal Compiler
 - [x] Unary Operators
 - [ ] Binary Operators
-
-...
+- [ ] Logical/Relational Operators
+- [ ] Local Variables
+- [ ] If Statements and Conditional Expressions
+- [ ] Compound Statements
+- [ ] Loops
+- [ ] Functions
+- [ ] File Scope Variable Declarations and Storage-Class Specifiers
+- [ ] Long Integers
+- [ ] Unsigned Integers
+- [ ] Floating-Point Numbers
+- [ ] Pointers
+- [ ] Arrays and Pointer Arithmetic
+- [ ] Characters and Strings
+- [ ] Supporting Dynamic Memory Allocation
+- [ ] Structures
+- [ ] Register Allocation
