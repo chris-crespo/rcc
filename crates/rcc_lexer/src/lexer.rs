@@ -77,11 +77,13 @@ impl<'src> Lexer<'src> {
                 '(' => self.make_token(TokenKind::LeftParen),
                 ')' => self.make_token(TokenKind::RightParen),
                 ';' => self.make_token(TokenKind::Semicolon),
+                '+' => self.make_token(TokenKind::Plus),
                 '-' => if self.eat_char('-') {
                     self.make_token(TokenKind::Minus2)
                 } else {
                     self.make_token(TokenKind::Minus)
                 }
+                '*' => self.make_token(TokenKind::Star),
                 '/' => match self.peek_char() {
                     Some('/') => {
                         self.next_char();
@@ -93,8 +95,9 @@ impl<'src> Lexer<'src> {
                         self.skip_multiline_comment();
                         continue;
                     }
-                    _ => self.make_token(TokenKind::Undetermined),
+                    _ => self.make_token(TokenKind::Slash),
                 },
+                '%' => self.make_token(TokenKind::Percent),
                 '~' => self.make_token(TokenKind::Tilde),
                 '0'..='9' => self.parse_number(),
                 'a'..='z' | 'A'..='Z' => self.parse_identifier(),
