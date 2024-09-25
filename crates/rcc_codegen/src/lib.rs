@@ -72,6 +72,7 @@ fn codegen_instrs(ctx: &mut CodegenContext, instrs: &[tac::Instruction]) {
 fn codegen_instr(ctx: &mut CodegenContext, instr: &tac::Instruction) {
     match instr {
         tac::Instruction::Return(instr) => codegen_return_instr(ctx, instr),
+        tac::Instruction::Binary(intr) => todo!("Codegen binary instr {:?}", instr),
         tac::Instruction::Unary(instr) => codegen_unary_instr(ctx, instr),
     }
 }

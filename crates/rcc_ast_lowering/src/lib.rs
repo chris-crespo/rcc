@@ -1,5 +1,5 @@
 use rcc_ast as ast;
-use rcc_tac as tac;
+use rcc_tac::{self as tac, Instruction};
 
 struct LoweringContext {
     temps: u32,
@@ -11,7 +11,7 @@ impl LoweringContext {
         LoweringContext {  temps: 0, instrs: Vec::new() }
     }
 
-    fn temp(&mut self) -> tac::Variable {
+    fn temp_var(&mut self) -> tac::Variable {
         let temp = self.temps;
         self.temps += 1;
 
@@ -73,9 +73,23 @@ fn lower_expr(
 ) -> tac::Value {
     match expr {
         ast::Expression::NumberLiteral(lit) => map_number_literal(lit),
-        ast::Expression::Binary(expr) => todo!("Lower binary expr {:?}", expr),
+        ast::Expression::Binary(expr) => lower_binary_expr(ctx, expr),
         ast::Expression::Unary(expr) => lower_unary_expr(ctx, expr),
     }
+}
+
+fn lower_binary_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) -> tac::Value {
+    let op = map_ast_binary_op(expr.op);
+    let lhs = lower_expr(ctx, &expr.lhs);
+    let rhs = lower_expr(ctx, &expr.rhs);
+    let dest = ctx.temp_var();
+
+    let binary_instr = tac::BinaryInstruction{ op, lhs, rhs, dest };
+    let instr = tac::Instruction::Binary(binary_instr);
+
+    ctx.instrs.push(instr);
+
+    tac::Value::Variable(dest)
 }
 
 fn lower_unary_expr(
@@ -84,7 +98,7 @@ fn lower_unary_expr(
 ) -> tac::Value {
     let op = map_ast_unary_op(expr.op);
     let src = lower_expr(ctx, &expr.expr);
-    let dest = ctx.temp();
+    let dest = ctx.temp_var();
 
     let unary_instr = tac::UnaryInstruction { op, src, dest };
     let instr = tac::Instruction::Unary(unary_instr);
@@ -92,6 +106,16 @@ fn lower_unary_expr(
     ctx.instrs.push(instr);
 
     tac::Value::Variable(dest)
+}
+
+fn map_ast_binary_op(op: ast::BinaryOperator) -> tac::BinaryOperator {
+    match op {
+        ast::BinaryOperator::Add => tac::BinaryOperator::Add,
+        ast::BinaryOperator::Substract => tac::BinaryOperator::Substract,
+        ast::BinaryOperator::Multiply => tac::BinaryOperator::Multiply,
+        ast::BinaryOperator::Divide => tac::BinaryOperator::Divide,
+        ast::BinaryOperator::Remainder => tac::BinaryOperator::Remainder,
+    }
 }
 
 fn map_ast_unary_op(op: ast::UnaryOperator) -> tac::UnaryOperator {

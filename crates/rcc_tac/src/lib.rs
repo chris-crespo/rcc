@@ -16,12 +16,30 @@ pub struct FunctionDeclaration {
 #[derive(Debug)]
 pub enum Instruction {
     Return(ReturnInstruction),
-    Unary(UnaryInstruction)
+    Binary(BinaryInstruction),
+    Unary(UnaryInstruction),
 }
 
 #[derive(Debug)]
 pub struct ReturnInstruction {
     pub value: Value
+}
+
+#[derive(Debug)]
+pub struct BinaryInstruction {
+    pub op: BinaryOperator,
+    pub lhs: Value,
+    pub rhs: Value,
+    pub dest: Variable
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum BinaryOperator {
+    Add,
+    Substract,
+    Multiply,
+    Divide,
+    Remainder
 }
 
 #[derive(Debug)]
