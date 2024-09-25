@@ -73,6 +73,11 @@ fn emit_instr(ctx: &mut EmitContext, instr: &Instruction) -> io::Result<()> {
         Instruction::Mov(instr) => emit_instr_mov(ctx, instr),
         Instruction::Neg(instr) => emit_instr_neg(ctx, instr),
         Instruction::Not(instr) => emit_instr_not(ctx, instr),
+        Instruction::Add(instr) => todo!(),
+        Instruction::Sub(instr) => todo!(),
+        Instruction::Mul(instr) => todo!(),
+        Instruction::Idiv(instr) => todo!(),
+        Instruction::Cdq => todo!(),
         Instruction::Ret => emit_instr_ret(ctx),
     }
 }
@@ -128,7 +133,9 @@ fn format_imm(imm: &ImmOperand) -> Cow<'_, str> {
 fn format_reg<'a>(register: &RegisterOperand) -> Cow<'a, str> {
     let s = match register {
         RegisterOperand::Ax => "%eax",
+        RegisterOperand::Dx => "%edx",
         RegisterOperand::R10 => "%r10d",
+        RegisterOperand::R11 => "%r11d",
     };
 
     Cow::Borrowed(s)

@@ -17,6 +17,11 @@ pub enum Instruction {
     Mov(MovInstruction),
     Neg(NegInstruction),
     Not(NotInstruction),
+    Add(AddInstruction),
+    Sub(SubInstruction),
+    Mul(MulInstruction),
+    Idiv(IdivInstruction),
+    Cdq,
     Ret
 }
 
@@ -36,6 +41,29 @@ pub struct NotInstruction {
     pub dest: Operand
 }
 
+#[derive(Debug)]
+pub struct AddInstruction {
+    pub src: Operand,
+    pub dest: Operand
+}
+
+#[derive(Debug)]
+pub struct SubInstruction {
+    pub src: Operand,
+    pub dest: Operand
+}
+
+#[derive(Debug)]
+pub struct MulInstruction {
+    pub src: Operand,
+    pub dest: Operand
+}
+
+#[derive(Debug)]
+pub struct IdivInstruction {
+    pub src: Operand
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Operand {
     Imm(ImmOperand),
@@ -51,7 +79,9 @@ pub struct ImmOperand {
 #[derive(Debug, Clone, Copy)]
 pub enum RegisterOperand {
     Ax,
-    R10
+    Dx,
+    R10,
+    R11
 }
 
 #[derive(Debug, Clone, Copy)]
