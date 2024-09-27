@@ -115,11 +115,11 @@ fn map_ast_binary_op(op: ast::BinaryOperator) -> tac::BinaryOperator {
         ast::BinaryOperator::Multiply => tac::BinaryOperator::Multiply,
         ast::BinaryOperator::Divide => tac::BinaryOperator::Divide,
         ast::BinaryOperator::Remainder => tac::BinaryOperator::Remainder,
-        ast::BinaryOperator::BitwiseAnd => todo!(),
-        ast::BinaryOperator::BitwiseOr => todo!(),
-        ast::BinaryOperator::BitwiseXor => todo!(),
-        ast::BinaryOperator::LeftShift => todo!(),
-        ast::BinaryOperator::RightShift => todo!(),
+        ast::BinaryOperator::BitwiseAnd => tac::BinaryOperator::BitwiseAnd,
+        ast::BinaryOperator::BitwiseOr => tac::BinaryOperator::BitwiseOr,
+        ast::BinaryOperator::BitwiseXor => tac::BinaryOperator::BitwiseXor,
+        ast::BinaryOperator::LeftShift => tac::BinaryOperator::LeftShift,
+        ast::BinaryOperator::RightShift => tac::BinaryOperator::RightShift,
     }
 }
 

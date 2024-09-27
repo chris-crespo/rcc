@@ -39,7 +39,12 @@ pub enum BinaryOperator {
     Substract,
     Multiply,
     Divide,
-    Remainder
+    Remainder,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    LeftShift,
+    RightShift
 }
 
 #[derive(Debug)]

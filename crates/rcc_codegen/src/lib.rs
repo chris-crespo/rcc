@@ -89,6 +89,11 @@ fn codegen_binary_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction
         tac::BinaryOperator::Multiply => codegen_mul_instr(ctx, instr),
         tac::BinaryOperator::Divide => codegen_div_instr(ctx, instr),
         tac::BinaryOperator::Remainder => codegen_rem_instr(ctx, instr),
+        tac::BinaryOperator::BitwiseAnd => todo!(),
+        tac::BinaryOperator::BitwiseOr => todo!(),
+        tac::BinaryOperator::BitwiseXor => todo!(),
+        tac::BinaryOperator::LeftShift => todo!(),
+        tac::BinaryOperator::RightShift => todo!(),
     }
 }
 
