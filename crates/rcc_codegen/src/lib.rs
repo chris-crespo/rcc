@@ -1,23 +1,22 @@
 use std::collections::HashMap;
 
+use instrs::Instrs;
 use rcc_asm as asm;
-use rcc_tac::{self as tac, UnaryInstruction};
+use rcc_tac as tac;
+
+mod instrs;
 
 struct CodegenContext {
-    instrs: Vec<asm::Instruction>,
+    instrs: Instrs,
     stack_offsets: HashMap<tac::Variable, u32>,
 }
 
 impl CodegenContext {
     fn new() -> CodegenContext {
         CodegenContext {
-            instrs: Vec::new(),
+            instrs: Instrs::new(),
             stack_offsets: HashMap::new(),
         }
-    }
-
-    fn take_instrs(&mut self) -> Vec<asm::Instruction> {
-        std::mem::take(&mut self.instrs)
     }
 
     fn stack_offset(&mut self, var: tac::Variable) -> asm::StackOperand {
@@ -54,7 +53,7 @@ fn codegen_decl_func(
 
     let name = codegen_id(&decl.name);
     let stack_size = ctx.stack_size();
-    let instrs = ctx.take_instrs();
+    let instrs = ctx.instrs.take();
 
     asm::FunctionDeclaration {
         name,
@@ -72,59 +71,87 @@ fn codegen_instrs(ctx: &mut CodegenContext, instrs: &[tac::Instruction]) {
 fn codegen_instr(ctx: &mut CodegenContext, instr: &tac::Instruction) {
     match instr {
         tac::Instruction::Return(instr) => codegen_return_instr(ctx, instr),
-        tac::Instruction::Binary(intr) => todo!("Codegen binary instr {:?}", instr),
+        tac::Instruction::Binary(instr) => codegen_binary_instr(ctx, instr),
         tac::Instruction::Unary(instr) => codegen_unary_instr(ctx, instr),
     }
 }
 
 fn codegen_return_instr(ctx: &mut CodegenContext, instr: &tac::ReturnInstruction) {
     let src = codegen_value(ctx, &instr.value);
-    let mov = asm::Instruction::Mov(asm::MovInstruction {
-        src,
-        dest: asm::Operand::Register(asm::RegisterOperand::Ax),
-    });
-    let ret = asm::Instruction::Ret;
+    ctx.instrs.mov(src, asm::regs::ax());
+    ctx.instrs.ret();
+}
 
-    ctx.instrs.push(mov);
-    ctx.instrs.push(ret);
+fn codegen_binary_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    match instr.op {
+        tac::BinaryOperator::Add => codegen_add_instr(ctx, instr),
+        tac::BinaryOperator::Substract => codegen_sub_instr(ctx, instr),
+        tac::BinaryOperator::Multiply => codegen_mul_instr(ctx, instr),
+        tac::BinaryOperator::Divide => codegen_div_instr(ctx, instr),
+        tac::BinaryOperator::Remainder => codegen_rem_instr(ctx, instr),
+    }
+}
+
+fn codegen_add_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov_fixup(lhs, dest);
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.add(rhs, dest);
+}
+
+fn codegen_sub_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov_fixup(lhs, dest);
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.sub(rhs, dest);
+}
+
+fn codegen_mul_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov_fixup(lhs, dest);
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.mul(rhs, dest);
+}
+
+fn codegen_div_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    ctx.instrs.mov(lhs, asm::regs::ax());
+    ctx.instrs.cdq();
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.idiv(rhs);
+
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov(asm::regs::ax(), dest);
+}
+
+fn codegen_rem_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    ctx.instrs.mov(lhs, asm::regs::ax());
+    ctx.instrs.cdq();
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.idiv(rhs);
+
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov(asm::regs::dx(), dest);
 }
 
 fn codegen_unary_instr(ctx: &mut CodegenContext, instr: &tac::UnaryInstruction) {
     let src = codegen_value(ctx, &instr.src);
-    let dest = if matches!(src, asm::Operand::Imm(_)) {
-        let dest = codegen_variable(ctx, &instr.dest);
-        let mov = asm::Instruction::Mov(asm::MovInstruction { src, dest });
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov_fixup(src, dest);
 
-        ctx.instrs.push(mov);
-
-        dest
-    } else {
-        let mov = asm::Instruction::Mov(asm::MovInstruction {
-            src,
-            dest: asm::Operand::Register(asm::RegisterOperand::R10),
-        });
-
-        ctx.instrs.push(mov);
-
-        let dest = codegen_variable(ctx, &instr.dest);
-        let mov2 = asm::Instruction::Mov(asm::MovInstruction {
-            src: asm::Operand::Register(asm::RegisterOperand::R10),
-            dest,
-        });
-
-        ctx.instrs.push(mov2);
-
-        dest
-    };
-
-    let unary = match instr.op {
-        tac::UnaryOperator::Negation => asm::Instruction::Neg(asm::NegInstruction { dest }),
-        tac::UnaryOperator::BitwiseComplement => {
-            asm::Instruction::Not(asm::NotInstruction { dest })
-        }
-    };
-
-    ctx.instrs.push(unary);
+    match instr.op {
+        tac::UnaryOperator::Negation => ctx.instrs.neg(dest),
+        tac::UnaryOperator::BitwiseComplement => ctx.instrs.not(dest),
+    }
 }
 
 fn codegen_value(ctx: &mut CodegenContext, value: &tac::Value) -> asm::Operand {

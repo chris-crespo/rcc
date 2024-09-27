@@ -33,7 +33,7 @@ pub struct BinaryInstruction {
     pub dest: Variable
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOperator {
     Add,
     Substract,

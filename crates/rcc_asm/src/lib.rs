@@ -1,5 +1,8 @@
 use rcc_interner::Symbol;
 
+mod asm_impl;
+pub mod regs;
+
 #[derive(Debug)]
 pub struct Program {
     pub func: FunctionDeclaration
