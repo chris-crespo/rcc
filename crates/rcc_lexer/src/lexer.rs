@@ -78,10 +78,12 @@ impl<'src> Lexer<'src> {
                 ')' => self.make_token(TokenKind::RightParen),
                 ';' => self.make_token(TokenKind::Semicolon),
                 '+' => self.make_token(TokenKind::Plus),
-                '-' => if self.eat_char('-') {
-                    self.make_token(TokenKind::Minus2)
-                } else {
-                    self.make_token(TokenKind::Minus)
+                '-' => {
+                    if self.eat_char('-') {
+                        self.make_token(TokenKind::Minus2)
+                    } else {
+                        self.make_token(TokenKind::Minus)
+                    }
                 }
                 '*' => self.make_token(TokenKind::Star),
                 '/' => match self.peek_char() {
@@ -99,6 +101,23 @@ impl<'src> Lexer<'src> {
                 },
                 '%' => self.make_token(TokenKind::Percent),
                 '~' => self.make_token(TokenKind::Tilde),
+                '&' => self.make_token(TokenKind::Amp),
+                '|' => self.make_token(TokenKind::Pipe),
+                '^' => self.make_token(TokenKind::Caret),
+                '<' => {
+                    if self.eat_char('<') {
+                        self.make_token(TokenKind::Lt2)
+                    } else {
+                        self.make_token(TokenKind::Undetermined)
+                    }
+                }
+                '>' => {
+                    if self.eat_char('>') {
+                        self.make_token(TokenKind::Gt2)
+                    } else {
+                        self.make_token(TokenKind::Undetermined)
+                    }
+                }
                 '0'..='9' => self.parse_number(),
                 'a'..='z' | 'A'..='Z' => self.parse_identifier(),
                 _ => self.make_token(TokenKind::Undetermined),
