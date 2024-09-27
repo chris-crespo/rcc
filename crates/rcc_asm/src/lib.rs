@@ -24,6 +24,11 @@ pub enum Instruction {
     Sub(SubInstruction),
     Mul(MulInstruction),
     Idiv(IdivInstruction),
+    And(AndInstruction),
+    Or(OrInstruction),
+    Xor(XorInstruction),
+    Shl(ShlInstruction),
+    Shr(ShrInstruction),
     Cdq,
     Ret
 }
@@ -67,6 +72,36 @@ pub struct IdivInstruction {
     pub src: Operand
 }
 
+#[derive(Debug)]
+pub struct AndInstruction {
+    pub src: Operand,
+    pub dest: Operand
+}
+
+#[derive(Debug)]
+pub struct OrInstruction {
+    pub src: Operand,
+    pub dest: Operand
+}
+
+#[derive(Debug)]
+pub struct XorInstruction {
+    pub src: Operand,
+    pub dest: Operand
+}
+
+#[derive(Debug)]
+pub struct ShlInstruction {
+    pub src: Operand,
+    pub dest: Operand
+}
+
+#[derive(Debug)]
+pub struct ShrInstruction {
+    pub src: Operand,
+    pub dest: Operand
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Operand {
     Imm(ImmOperand),
@@ -82,6 +117,7 @@ pub struct ImmOperand {
 #[derive(Debug, Clone, Copy)]
 pub enum RegisterOperand {
     Ax,
+    Cl,
     Dx,
     R10,
     R11

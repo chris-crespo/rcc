@@ -77,6 +77,11 @@ fn emit_instr(ctx: &mut EmitContext, instr: &Instruction) -> io::Result<()> {
         Instruction::Sub(instr) => emit_instr_sub(ctx, instr),
         Instruction::Mul(instr) => emit_instr_mul(ctx, instr),
         Instruction::Idiv(instr) => emit_instr_idiv(ctx, instr),
+        Instruction::And(_) => todo!(),
+        Instruction::Or(_) => todo!(),
+        Instruction::Xor(_) => todo!(),
+        Instruction::Shl(_) => todo!(),
+        Instruction::Shr(_) => todo!(),
         Instruction::Cdq => emit_instr_cdq(ctx),
         Instruction::Ret => emit_instr_ret(ctx),
     }
@@ -160,6 +165,7 @@ fn format_imm(imm: &ImmOperand) -> Cow<'_, str> {
 fn format_reg<'a>(register: &RegisterOperand) -> Cow<'a, str> {
     let s = match register {
         RegisterOperand::Ax => "%eax",
+        RegisterOperand::Cl => "%cl",
         RegisterOperand::Dx => "%edx",
         RegisterOperand::R10 => "%r10d",
         RegisterOperand::R11 => "%r11d",

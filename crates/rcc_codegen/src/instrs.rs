@@ -92,6 +92,76 @@ impl Instrs {
         }
     }
 
+    pub fn and(&mut self, src: asm::Operand, dest: asm::Operand) {
+        let and = asm::Instruction::And(asm::AndInstruction { src, dest });
+        self.0.push(and)
+    }
+
+    pub fn and_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+        if src.is_mem_addr() && dest.is_mem_addr() {
+            self.mov(src, asm::regs::r10());
+            self.and(asm::regs::r10(), dest)
+        } else {
+            self.and(src, dest)
+        }
+    }
+
+    pub fn or(&mut self, src: asm::Operand, dest: asm::Operand) {
+        let or = asm::Instruction::Or(asm::OrInstruction { src, dest });
+        self.0.push(or)
+    }
+
+    pub fn or_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+        if src.is_mem_addr() && dest.is_mem_addr() {
+            self.mov(src, asm::regs::r10());
+            self.or(asm::regs::r10(), dest)
+        } else {
+            self.or(src, dest)
+        }
+    }
+
+    pub fn xor(&mut self, src: asm::Operand, dest: asm::Operand) {
+        let xor = asm::Instruction::Xor(asm::XorInstruction { src, dest });
+        self.0.push(xor)
+    }
+
+    pub fn xor_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+        if src.is_mem_addr() && dest.is_mem_addr() {
+            self.mov(src, asm::regs::r10());
+            self.xor(asm::regs::r10(), dest)
+        } else {
+            self.xor(src, dest)
+        }
+    }
+
+    pub fn shl(&mut self, src: asm::Operand, dest: asm::Operand) {
+        let shl = asm::Instruction::Shl(asm::ShlInstruction { src, dest });
+        self.0.push(shl)
+    }
+
+    pub fn shl_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+        if src.is_imm() {
+            self.shl(src, dest)
+        } else {
+            self.mov(src, asm::regs::cl());
+            self.shl(asm::regs::cl(), dest)
+        }
+    }
+
+    pub fn shr(&mut self, src: asm::Operand, dest: asm::Operand) {
+        let shr = asm::Instruction::Shr(asm::ShrInstruction { src, dest });
+        self.0.push(shr)
+    }
+
+    pub fn shr_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+        if src.is_imm() {
+            self.shr(src, dest)
+        } else {
+            self.mov(src, asm::regs::cl());
+            self.shr(asm::regs::cl(), dest)
+        }
+    }
+
     pub fn cdq(&mut self) {
         let cdq = asm::Instruction::Cdq;
         self.0.push(cdq)

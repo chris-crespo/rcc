@@ -6,6 +6,11 @@ pub fn ax() -> Operand {
 }
 
 #[inline(always)]
+pub fn cl() -> Operand {
+    Operand::Register(RegisterOperand::Cl)
+}
+
+#[inline(always)]
 pub fn dx() -> Operand {
     Operand::Register(RegisterOperand::Dx)
 }

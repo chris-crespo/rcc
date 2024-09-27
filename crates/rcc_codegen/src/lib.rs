@@ -89,11 +89,11 @@ fn codegen_binary_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction
         tac::BinaryOperator::Multiply => codegen_mul_instr(ctx, instr),
         tac::BinaryOperator::Divide => codegen_div_instr(ctx, instr),
         tac::BinaryOperator::Remainder => codegen_rem_instr(ctx, instr),
-        tac::BinaryOperator::BitwiseAnd => todo!(),
-        tac::BinaryOperator::BitwiseOr => todo!(),
-        tac::BinaryOperator::BitwiseXor => todo!(),
-        tac::BinaryOperator::LeftShift => todo!(),
-        tac::BinaryOperator::RightShift => todo!(),
+        tac::BinaryOperator::BitwiseAnd => codegen_and_instr(ctx, instr),
+        tac::BinaryOperator::BitwiseOr => codegen_or_instr(ctx, instr),
+        tac::BinaryOperator::BitwiseXor => codegen_xor_instr(ctx, instr),
+        tac::BinaryOperator::LeftShift => codegen_shl_instr(ctx, instr),
+        tac::BinaryOperator::RightShift => codegen_shr_instr(ctx, instr),
     }
 }
 
@@ -146,6 +146,51 @@ fn codegen_rem_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
 
     let dest = codegen_variable(ctx, &instr.dest);
     ctx.instrs.mov(asm::regs::dx(), dest);
+}
+
+fn codegen_and_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov_fixup(lhs, dest);
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.and_fixup(rhs, dest);
+}
+
+fn codegen_or_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov_fixup(lhs, dest);
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.or_fixup(rhs, dest);
+}
+
+fn codegen_xor_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov_fixup(lhs, dest);
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.xor_fixup(rhs, dest);
+}
+
+fn codegen_shl_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov_fixup(lhs, dest);
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.shl_fixup(rhs, dest);
+}
+
+fn codegen_shr_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+    let lhs = codegen_value(ctx, &instr.lhs);
+    let dest = codegen_variable(ctx, &instr.dest);
+    ctx.instrs.mov_fixup(lhs, dest);
+
+    let rhs = codegen_value(ctx, &instr.rhs);
+    ctx.instrs.shr_fixup(rhs, dest);
 }
 
 fn codegen_unary_instr(ctx: &mut CodegenContext, instr: &tac::UnaryInstruction) {
