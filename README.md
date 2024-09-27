@@ -9,6 +9,7 @@ This compiler is not intended to match the capabilities of those such as `gcc` o
 - [x] Minimal Compiler
 - [x] Unary Operators
 - [x] Binary Operators
+- [ ] Bitwise Operators
 - [ ] Logical/Relational Operators
 - [ ] Local Variables
 - [ ] If Statements and Conditional Expressions
