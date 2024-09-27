@@ -4,7 +4,7 @@ use std::{
     io::{self, BufWriter, Write},
 };
 
-use rcc_asm::{FunctionDeclaration, ImmOperand, Instruction, MovInstruction, NegInstruction, NotInstruction, Operand, Program, RegisterOperand, StackOperand};
+use rcc_asm::{AddInstruction, FunctionDeclaration, IdivInstruction, ImmOperand, Instruction, MovInstruction, MulInstruction, NegInstruction, NotInstruction, Operand, Program, RegisterOperand, StackOperand, SubInstruction};
 use rcc_interner::Interner;
 
 struct EmitContext<'a> {
@@ -73,11 +73,11 @@ fn emit_instr(ctx: &mut EmitContext, instr: &Instruction) -> io::Result<()> {
         Instruction::Mov(instr) => emit_instr_mov(ctx, instr),
         Instruction::Neg(instr) => emit_instr_neg(ctx, instr),
         Instruction::Not(instr) => emit_instr_not(ctx, instr),
-        Instruction::Add(instr) => todo!(),
-        Instruction::Sub(instr) => todo!(),
-        Instruction::Mul(instr) => todo!(),
-        Instruction::Idiv(instr) => todo!(),
-        Instruction::Cdq => todo!(),
+        Instruction::Add(instr) => emit_instr_add(ctx, instr),
+        Instruction::Sub(instr) => emit_instr_sub(ctx, instr),
+        Instruction::Mul(instr) => emit_instr_mul(ctx, instr),
+        Instruction::Idiv(instr) => emit_instr_idiv(ctx, instr),
+        Instruction::Cdq => emit_instr_cdq(ctx),
         Instruction::Ret => emit_instr_ret(ctx),
     }
 }
@@ -99,6 +99,33 @@ fn emit_instr_neg(ctx: &mut EmitContext, instr: &NegInstruction) -> io::Result<(
 fn emit_instr_not(ctx: &mut EmitContext, instr: &NotInstruction) -> io::Result<()> {
     let dest = format_operand(&instr.dest);
     writeln!(ctx.output, "    notl {}", dest)
+}
+
+fn emit_instr_add(ctx: &mut EmitContext, instr: &AddInstruction) -> io::Result<()> {
+    let src = format_operand(&instr.src);
+    let dest = format_operand(&instr.dest);
+    writeln!(ctx.output, "    addl {}, {}", src, dest)
+}
+
+fn emit_instr_sub(ctx: &mut EmitContext, instr: &SubInstruction) -> io::Result<()> {
+    let src = format_operand(&instr.src);
+    let dest = format_operand(&instr.dest);
+    writeln!(ctx.output, "    subl {}, {}", src, dest)
+}
+
+fn emit_instr_mul(ctx: &mut EmitContext, instr: &MulInstruction) -> io::Result<()> {
+    let src = format_operand(&instr.src);
+    let dest = format_operand(&instr.dest);
+    writeln!(ctx.output, "    imull {}, {}", src, dest)
+}
+
+fn emit_instr_idiv(ctx: &mut EmitContext, instr: &IdivInstruction) -> io::Result<()> {
+    let src = format_operand(&instr.src);
+    writeln!(ctx.output, "    idivl {}", src)
+}
+
+fn emit_instr_cdq(ctx: &mut EmitContext) -> io::Result<()> {
+    writeln!(ctx.output, "    cdq")
 }
 
 fn emit_instr_ret(ctx: &mut EmitContext) -> io::Result<()> {
