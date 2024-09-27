@@ -14,3 +14,8 @@ pub fn dx() -> Operand {
 pub fn r10() -> Operand {
     Operand::Register(RegisterOperand::R10)
 }
+
+#[inline(always)]
+pub fn r11() -> Operand {
+    Operand::Register(RegisterOperand::R11)
+}

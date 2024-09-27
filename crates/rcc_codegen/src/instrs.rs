@@ -40,9 +40,27 @@ impl Instrs {
         self.0.push(add)
     }
 
+    pub fn add_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+        if src.is_mem_addr() && dest.is_mem_addr() {
+            self.mov(src, asm::regs::r10());
+            self.add(asm::regs::r10(), dest)
+        } else {
+            self.add(src, dest)
+        }
+    }
+
     pub fn sub(&mut self, src: asm::Operand, dest: asm::Operand) {
         let sub = asm::Instruction::Sub(asm::SubInstruction { src, dest });
         self.0.push(sub)
+    }
+
+    pub fn sub_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+        if src.is_mem_addr() && dest.is_mem_addr() {
+            self.mov(src, asm::regs::r10());
+            self.sub(asm::regs::r10(), dest)
+        } else {
+            self.sub(src, dest)
+        }
     }
 
     pub fn mul(&mut self, src: asm::Operand, dest: asm::Operand) {
@@ -50,9 +68,28 @@ impl Instrs {
         self.0.push(mul)
     }
 
+    pub fn mul_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+        if dest.is_mem_addr() {
+            self.mov(dest, asm::regs::r11());
+            self.mul(src, asm::regs::r11());
+            self.mov(asm::regs::r11(), dest);
+        } else {
+            self.mul(src, dest)
+        }
+    }
+
     pub fn idiv(&mut self, src: asm::Operand) {
         let idiv = asm::Instruction::Idiv(asm::IdivInstruction { src });
         self.0.push(idiv)
+    }
+
+    pub fn idiv_fixup(&mut self, src: asm::Operand) {
+        if src.is_imm() {
+            self.mov(src, asm::regs::r10());
+            self.idiv(asm::regs::r10())
+        } else {
+            self.idiv(src);
+        }
     }
 
     pub fn cdq(&mut self) {

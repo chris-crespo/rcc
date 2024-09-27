@@ -98,7 +98,7 @@ fn codegen_add_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
     ctx.instrs.mov_fixup(lhs, dest);
 
     let rhs = codegen_value(ctx, &instr.rhs);
-    ctx.instrs.add(rhs, dest);
+    ctx.instrs.add_fixup(rhs, dest);
 }
 
 fn codegen_sub_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
@@ -107,7 +107,7 @@ fn codegen_sub_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
     ctx.instrs.mov_fixup(lhs, dest);
 
     let rhs = codegen_value(ctx, &instr.rhs);
-    ctx.instrs.sub(rhs, dest);
+    ctx.instrs.sub_fixup(rhs, dest);
 }
 
 fn codegen_mul_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
@@ -116,7 +116,7 @@ fn codegen_mul_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
     ctx.instrs.mov_fixup(lhs, dest);
 
     let rhs = codegen_value(ctx, &instr.rhs);
-    ctx.instrs.mul(rhs, dest);
+    ctx.instrs.mul_fixup(rhs, dest);
 }
 
 fn codegen_div_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
@@ -125,7 +125,7 @@ fn codegen_div_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
     ctx.instrs.cdq();
 
     let rhs = codegen_value(ctx, &instr.rhs);
-    ctx.instrs.idiv(rhs);
+    ctx.instrs.idiv_fixup(rhs);
 
     let dest = codegen_variable(ctx, &instr.dest);
     ctx.instrs.mov(asm::regs::ax(), dest);
@@ -137,7 +137,7 @@ fn codegen_rem_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
     ctx.instrs.cdq();
 
     let rhs = codegen_value(ctx, &instr.rhs);
-    ctx.instrs.idiv(rhs);
+    ctx.instrs.idiv_fixup(rhs);
 
     let dest = codegen_variable(ctx, &instr.dest);
     ctx.instrs.mov(asm::regs::dx(), dest);
