@@ -24,6 +24,11 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
         TokenKind::Star => BinaryOperator::Multiply,
         TokenKind::Slash => BinaryOperator::Divide,
         TokenKind::Percent => BinaryOperator::Remainder,
+        TokenKind::Amp => BinaryOperator::BitwiseAnd,
+        TokenKind::Pipe => BinaryOperator::BitwiseOr,
+        TokenKind::Caret => BinaryOperator::BitwiseXor,
+        TokenKind::Lt2 => BinaryOperator::LeftShift,
+        TokenKind::Gt2 => BinaryOperator::RightShift,
         _ => unreachable!("Binary operatoor: {kind:?}"),
     }
 }
@@ -31,6 +36,10 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Precedence {
     None,
+    BitwiseXor,
+    BitwiseOr,
+    BitwiseAnd,
+    Shift,
     Term,
     Factor,
 }
@@ -38,6 +47,10 @@ enum Precedence {
 impl From<TokenKind> for Precedence {
     fn from(value: TokenKind) -> Self {
         match value {
+            TokenKind::Lt2 | TokenKind::Gt2 => Precedence::Shift,
+            TokenKind::Caret => Precedence::BitwiseXor,
+            TokenKind::Pipe => Precedence::BitwiseOr,
+            TokenKind::Amp => Precedence::BitwiseAnd,
             TokenKind::Plus | TokenKind::Minus => Precedence::Term,
             TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Precedence::Factor,
             _ => Precedence::None,
