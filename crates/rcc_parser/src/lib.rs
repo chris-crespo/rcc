@@ -36,8 +36,8 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Precedence {
     None,
-    BitwiseXor,
     BitwiseOr,
+    BitwiseXor,
     BitwiseAnd,
     Shift,
     Term,
