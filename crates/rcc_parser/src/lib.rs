@@ -254,7 +254,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.bump(); // Skip operator.
 
         let op = map_unary_operator(kind);
-        let expr = self.parse_expr()?;
+        let expr = self.parse_expr_lhs()?;
 
         let span = self.end_span(span);
         let expr = self.ast.expr_unary(span, op, expr);
