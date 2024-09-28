@@ -18,6 +18,11 @@ pub enum Instruction {
     Return(ReturnInstruction),
     Binary(BinaryInstruction),
     Unary(UnaryInstruction),
+    Copy(CopyInstruction),
+    Jump(JumpInstruction),
+    JumpIfZero(JumpIfZeroInstruction),
+    JumpIfNotZero(JumpIfNotZeroInstruction),
+    Label(Label),
 }
 
 #[derive(Debug)]
@@ -44,7 +49,13 @@ pub enum BinaryOperator {
     BitwiseOr,
     BitwiseXor,
     LeftShift,
-    RightShift
+    RightShift,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanEqual,
+    GreaterThan,
+    GreaterThanEqual
 }
 
 #[derive(Debug)]
@@ -57,8 +68,35 @@ pub struct UnaryInstruction {
 #[derive(Debug, Clone, Copy)]
 pub enum UnaryOperator {
     Negation,
+    Not,
     BitwiseComplement
 }
+
+#[derive(Debug)]
+pub struct CopyInstruction {
+    pub src: Value,
+    pub dest: Variable
+}
+
+#[derive(Debug)]
+pub struct JumpInstruction {
+    pub target: Label
+}
+
+#[derive(Debug)]
+pub struct JumpIfZeroInstruction {
+    pub value: Value,
+    pub target: Label
+}
+
+#[derive(Debug)]
+pub struct JumpIfNotZeroInstruction {
+    pub value: Value,
+    pub target: Label
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Label(u32);
 
 #[derive(Debug)]
 pub enum Value {

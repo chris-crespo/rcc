@@ -1,14 +1,19 @@
 use rcc_ast as ast;
-use rcc_tac::{self as tac, Instruction};
+use rcc_tac as tac;
 
 struct LoweringContext {
     temps: u32,
-    instrs: Vec<tac::Instruction>
+    labels: u32,
+    instrs: Vec<tac::Instruction>,
 }
 
 impl LoweringContext {
     fn new() -> LoweringContext {
-        LoweringContext {  temps: 0, instrs: Vec::new() }
+        LoweringContext {
+            temps: 0,
+            labels: 0,
+            instrs: Vec::new(),
+        }
     }
 
     fn temp_var(&mut self) -> tac::Variable {
@@ -17,6 +22,13 @@ impl LoweringContext {
 
         let temp_var = tac::TempVar::new(temp);
         tac::Variable::Temp(temp_var)
+    }
+
+    fn label(&mut self) -> tac::Label {
+        let label = self.labels;
+        self.labels += 1;
+
+        tac::Label::new(label)
     }
 
     #[inline(always)]
@@ -47,19 +59,13 @@ fn lower_decl_func(
     tac::FunctionDeclaration { name, body }
 }
 
-fn lower_stmt(
-    ctx: &mut LoweringContext,
-    stmt: &ast::Statement,
-) {
+fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
     match stmt {
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
     }
 }
 
-fn lower_return_stmt(
-    ctx: &mut LoweringContext,
-    stmt: &ast::ReturnStatement,
-) {
+fn lower_return_stmt(ctx: &mut LoweringContext, stmt: &ast::ReturnStatement) {
     let value = lower_expr(ctx, &stmt.expr);
     let return_instr = tac::ReturnInstruction { value };
     let instr = tac::Instruction::Return(return_instr);
@@ -67,15 +73,124 @@ fn lower_return_stmt(
     ctx.instrs.push(instr);
 }
 
-fn lower_expr(
-    ctx: &mut LoweringContext,
-    expr: &ast::Expression,
-) -> tac::Value {
+fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
     match expr {
         ast::Expression::NumberLiteral(lit) => map_number_literal(lit),
+        ast::Expression::Binary(expr) if expr.op == ast::BinaryOperator::And => {
+            lower_and_expr(ctx, expr)
+        }
+        ast::Expression::Binary(expr) if expr.op == ast::BinaryOperator::Or => {
+            lower_or_expr(ctx, expr)
+        }
         ast::Expression::Binary(expr) => lower_binary_expr(ctx, expr),
         ast::Expression::Unary(expr) => lower_unary_expr(ctx, expr),
     }
+}
+
+fn lower_and_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) -> tac::Value {
+    let false_label = ctx.label();
+    let end_label = ctx.label();
+
+    let lhs = lower_expr(ctx, &expr.lhs);
+    let jmpz_instr = tac::JumpIfZeroInstruction {
+        value: lhs,
+        target: false_label,
+    };
+    let instr_jmpz = tac::Instruction::JumpIfZero(jmpz_instr);
+    ctx.instrs.push(instr_jmpz);
+
+    let rhs = lower_expr(ctx, &expr.rhs);
+    let jmpz_instr = tac::JumpIfZeroInstruction {
+        value: rhs,
+        target: false_label,
+    };
+    let instr_jmpz = tac::Instruction::JumpIfZero(jmpz_instr);
+    ctx.instrs.push(instr_jmpz);
+
+    let result_var = ctx.temp_var();
+
+    let constant = tac::Constant { value: 1 };
+    let value_const = tac::Value::Constant(constant);
+    let copy_instr = tac::CopyInstruction {
+        src: value_const,
+        dest: result_var,
+    };
+    let instr_copy = tac::Instruction::Copy(copy_instr);
+    ctx.instrs.push(instr_copy);
+
+    let jmp_instr = tac::JumpInstruction { target: end_label };
+    let instr_jmp = tac::Instruction::Jump(jmp_instr);
+    ctx.instrs.push(instr_jmp);
+
+    let label_instr = tac::Instruction::Label(false_label);
+    ctx.instrs.push(label_instr);
+
+    let constant = tac::Constant { value: 0 };
+    let value_const = tac::Value::Constant(constant);
+    let copy_instr = tac::CopyInstruction {
+        src: value_const,
+        dest: result_var,
+    };
+    let instr_copy = tac::Instruction::Copy(copy_instr);
+    ctx.instrs.push(instr_copy);
+
+    let label_instr = tac::Instruction::Label(end_label);
+    ctx.instrs.push(label_instr);
+
+    tac::Value::Variable(result_var)
+}
+
+fn lower_or_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) -> tac::Value {
+    let true_label = ctx.label();
+    let end_label = ctx.label();
+
+    let lhs = lower_expr(ctx, &expr.lhs);
+    let jmpnz_instr = tac::JumpIfNotZeroInstruction {
+        value: lhs,
+        target: true_label,
+    };
+    let instr_jmpnz = tac::Instruction::JumpIfNotZero(jmpnz_instr);
+    ctx.instrs.push(instr_jmpnz);
+
+    let rhs = lower_expr(ctx, &expr.rhs);
+    let jmpnz_instr = tac::JumpIfNotZeroInstruction {
+        value: rhs,
+        target: true_label,
+    };
+    let instr_jmpnz = tac::Instruction::JumpIfNotZero(jmpnz_instr);
+    ctx.instrs.push(instr_jmpnz);
+
+    let result_var = ctx.temp_var();
+
+    let constant = tac::Constant { value: 0 };
+    let value_const = tac::Value::Constant(constant);
+    let copy_instr = tac::CopyInstruction {
+        src: value_const,
+        dest: result_var,
+    };
+    let instr_copy = tac::Instruction::Copy(copy_instr);
+    ctx.instrs.push(instr_copy);
+
+    let jmp_instr = tac::JumpInstruction { target: end_label };
+    let instr_jmp = tac::Instruction::Jump(jmp_instr);
+    ctx.instrs.push(instr_jmp);
+
+    let label_instr = tac::Instruction::Label(true_label);
+    ctx.instrs.push(label_instr);
+
+    let constant = tac::Constant { value: 1 };
+    let value_const = tac::Value::Constant(constant);
+    let copy_instr = tac::CopyInstruction {
+        src: value_const,
+        dest: result_var,
+    };
+    let instr_copy = tac::Instruction::Copy(copy_instr);
+    ctx.instrs.push(instr_copy);
+
+    let label_instr = tac::Instruction::Label(end_label);
+    ctx.instrs.push(label_instr);
+
+    tac::Value::Variable(result_var)
 }
 
 fn lower_binary_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) -> tac::Value {
@@ -84,7 +199,7 @@ fn lower_binary_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) ->
     let rhs = lower_expr(ctx, &expr.rhs);
     let dest = ctx.temp_var();
 
-    let binary_instr = tac::BinaryInstruction{ op, lhs, rhs, dest };
+    let binary_instr = tac::BinaryInstruction { op, lhs, rhs, dest };
     let instr = tac::Instruction::Binary(binary_instr);
 
     ctx.instrs.push(instr);
@@ -92,10 +207,7 @@ fn lower_binary_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) ->
     tac::Value::Variable(dest)
 }
 
-fn lower_unary_expr(
-    ctx: &mut LoweringContext,
-    expr: &ast::UnaryExpression,
-) -> tac::Value {
+fn lower_unary_expr(ctx: &mut LoweringContext, expr: &ast::UnaryExpression) -> tac::Value {
     let op = map_ast_unary_op(expr.op);
     let src = lower_expr(ctx, &expr.expr);
     let dest = ctx.temp_var();
@@ -120,21 +232,20 @@ fn map_ast_binary_op(op: ast::BinaryOperator) -> tac::BinaryOperator {
         ast::BinaryOperator::BitwiseXor => tac::BinaryOperator::BitwiseXor,
         ast::BinaryOperator::LeftShift => tac::BinaryOperator::LeftShift,
         ast::BinaryOperator::RightShift => tac::BinaryOperator::RightShift,
-        ast::BinaryOperator::And => todo!(),
-        ast::BinaryOperator::Or => todo!(),
-        ast::BinaryOperator::Equal => todo!(),
-        ast::BinaryOperator::NotEqual => todo!(),
-        ast::BinaryOperator::LessThan => todo!(),
-        ast::BinaryOperator::LessThanEqual => todo!(),
-        ast::BinaryOperator::GreaterThan => todo!(),
-        ast::BinaryOperator::GreaterThanEqual => todo!(),
+        ast::BinaryOperator::Equal => tac::BinaryOperator::Equal,
+        ast::BinaryOperator::NotEqual => tac::BinaryOperator::NotEqual,
+        ast::BinaryOperator::LessThan => tac::BinaryOperator::LessThan,
+        ast::BinaryOperator::LessThanEqual => tac::BinaryOperator::LessThanEqual,
+        ast::BinaryOperator::GreaterThan => tac::BinaryOperator::GreaterThan,
+        ast::BinaryOperator::GreaterThanEqual => tac::BinaryOperator::GreaterThanEqual,
+        _ => unreachable!("Binary operator: {op:?}"),
     }
 }
 
 fn map_ast_unary_op(op: ast::UnaryOperator) -> tac::UnaryOperator {
     match op {
         ast::UnaryOperator::Negation => tac::UnaryOperator::Negation,
-        ast::UnaryOperator::Not => todo!(),
+        ast::UnaryOperator::Not => tac::UnaryOperator::Not,
         ast::UnaryOperator::BitwiseComplement => tac::UnaryOperator::BitwiseComplement,
     }
 }

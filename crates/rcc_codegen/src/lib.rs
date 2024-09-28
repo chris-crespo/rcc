@@ -73,6 +73,11 @@ fn codegen_instr(ctx: &mut CodegenContext, instr: &tac::Instruction) {
         tac::Instruction::Return(instr) => codegen_return_instr(ctx, instr),
         tac::Instruction::Binary(instr) => codegen_binary_instr(ctx, instr),
         tac::Instruction::Unary(instr) => codegen_unary_instr(ctx, instr),
+        tac::Instruction::Copy(_) => todo!(),
+        tac::Instruction::Jump(_) => todo!(),
+        tac::Instruction::JumpIfZero(_) => todo!(),
+        tac::Instruction::JumpIfNotZero(_) => todo!(),
+        tac::Instruction::Label(_) => todo!(),
     }
 }
 
@@ -94,6 +99,12 @@ fn codegen_binary_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction
         tac::BinaryOperator::BitwiseXor => codegen_xor_instr(ctx, instr),
         tac::BinaryOperator::LeftShift => codegen_shl_instr(ctx, instr),
         tac::BinaryOperator::RightShift => codegen_shr_instr(ctx, instr),
+        tac::BinaryOperator::Equal => todo!(),
+        tac::BinaryOperator::NotEqual => todo!(),
+        tac::BinaryOperator::LessThan => todo!(),
+        tac::BinaryOperator::LessThanEqual => todo!(),
+        tac::BinaryOperator::GreaterThan => todo!(),
+        tac::BinaryOperator::GreaterThanEqual => todo!(),
     }
 }
 
@@ -200,6 +211,7 @@ fn codegen_unary_instr(ctx: &mut CodegenContext, instr: &tac::UnaryInstruction) 
 
     match instr.op {
         tac::UnaryOperator::Negation => ctx.instrs.neg(dest),
+        tac::UnaryOperator::Not => todo!(),
         tac::UnaryOperator::BitwiseComplement => ctx.instrs.not(dest),
     }
 }
