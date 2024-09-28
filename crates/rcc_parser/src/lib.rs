@@ -29,7 +29,7 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
         TokenKind::Caret => BinaryOperator::BitwiseXor,
         TokenKind::Lt2 => BinaryOperator::LeftShift,
         TokenKind::Gt2 => BinaryOperator::RightShift,
-        _ => unreachable!("Binary operatoor: {kind:?}"),
+        _ => unreachable!("Binary operator: {kind:?}"),
     }
 }
 
