@@ -1,10 +1,13 @@
+use instrs::Instrs;
 use rcc_ast as ast;
 use rcc_tac as tac;
+
+mod instrs;
 
 struct LoweringContext {
     temps: u32,
     labels: u32,
-    instrs: Vec<tac::Instruction>,
+    instrs: Instrs,
 }
 
 impl LoweringContext {
@@ -12,7 +15,7 @@ impl LoweringContext {
         LoweringContext {
             temps: 0,
             labels: 0,
-            instrs: Vec::new(),
+            instrs: Instrs::new(),
         }
     }
 
@@ -29,11 +32,6 @@ impl LoweringContext {
         self.labels += 1;
 
         tac::Label::new(label)
-    }
-
-    #[inline(always)]
-    fn take_instrs(&mut self) -> Vec<tac::Instruction> {
-        std::mem::take(&mut self.instrs)
     }
 }
 
@@ -54,7 +52,7 @@ fn lower_decl_func(
     lower_stmt(ctx, &func.stmt);
 
     let name = map_ast_id(&func.name);
-    let body = ctx.take_instrs();
+    let body = ctx.instrs.take();
 
     tac::FunctionDeclaration { name, body }
 }
@@ -67,10 +65,7 @@ fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
 
 fn lower_return_stmt(ctx: &mut LoweringContext, stmt: &ast::ReturnStatement) {
     let value = lower_expr(ctx, &stmt.expr);
-    let return_instr = tac::ReturnInstruction { value };
-    let instr = tac::Instruction::Return(return_instr);
-
-    ctx.instrs.push(instr);
+    ctx.instrs.ret(value);
 }
 
 fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
@@ -92,50 +87,25 @@ fn lower_and_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) -> ta
     let end_label = ctx.label();
 
     let lhs = lower_expr(ctx, &expr.lhs);
-    let jmpz_instr = tac::JumpIfZeroInstruction {
-        value: lhs,
-        target: false_label,
-    };
-    let instr_jmpz = tac::Instruction::JumpIfZero(jmpz_instr);
-    ctx.instrs.push(instr_jmpz);
+    ctx.instrs.jmpz(lhs, false_label);
 
     let rhs = lower_expr(ctx, &expr.rhs);
-    let jmpz_instr = tac::JumpIfZeroInstruction {
-        value: rhs,
-        target: false_label,
-    };
-    let instr_jmpz = tac::Instruction::JumpIfZero(jmpz_instr);
-    ctx.instrs.push(instr_jmpz);
+    ctx.instrs.jmpz(rhs, false_label);
 
     let result_var = ctx.temp_var();
 
     let constant = tac::Constant { value: 1 };
     let value_const = tac::Value::Constant(constant);
-    let copy_instr = tac::CopyInstruction {
-        src: value_const,
-        dest: result_var,
-    };
-    let instr_copy = tac::Instruction::Copy(copy_instr);
-    ctx.instrs.push(instr_copy);
+    ctx.instrs.copy(value_const, result_var);
 
-    let jmp_instr = tac::JumpInstruction { target: end_label };
-    let instr_jmp = tac::Instruction::Jump(jmp_instr);
-    ctx.instrs.push(instr_jmp);
-
-    let label_instr = tac::Instruction::Label(false_label);
-    ctx.instrs.push(label_instr);
+    ctx.instrs.jmp(end_label);
+    ctx.instrs.label(false_label);
 
     let constant = tac::Constant { value: 0 };
     let value_const = tac::Value::Constant(constant);
-    let copy_instr = tac::CopyInstruction {
-        src: value_const,
-        dest: result_var,
-    };
-    let instr_copy = tac::Instruction::Copy(copy_instr);
-    ctx.instrs.push(instr_copy);
+    ctx.instrs.copy(value_const, result_var);
 
-    let label_instr = tac::Instruction::Label(end_label);
-    ctx.instrs.push(label_instr);
+    ctx.instrs.label(end_label);
 
     tac::Value::Variable(result_var)
 }
@@ -145,50 +115,25 @@ fn lower_or_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) -> tac
     let end_label = ctx.label();
 
     let lhs = lower_expr(ctx, &expr.lhs);
-    let jmpnz_instr = tac::JumpIfNotZeroInstruction {
-        value: lhs,
-        target: true_label,
-    };
-    let instr_jmpnz = tac::Instruction::JumpIfNotZero(jmpnz_instr);
-    ctx.instrs.push(instr_jmpnz);
+    ctx.instrs.jmpnz(lhs, true_label);
 
     let rhs = lower_expr(ctx, &expr.rhs);
-    let jmpnz_instr = tac::JumpIfNotZeroInstruction {
-        value: rhs,
-        target: true_label,
-    };
-    let instr_jmpnz = tac::Instruction::JumpIfNotZero(jmpnz_instr);
-    ctx.instrs.push(instr_jmpnz);
+    ctx.instrs.jmpnz(rhs, true_label);
 
     let result_var = ctx.temp_var();
 
     let constant = tac::Constant { value: 0 };
     let value_const = tac::Value::Constant(constant);
-    let copy_instr = tac::CopyInstruction {
-        src: value_const,
-        dest: result_var,
-    };
-    let instr_copy = tac::Instruction::Copy(copy_instr);
-    ctx.instrs.push(instr_copy);
+    ctx.instrs.copy(value_const, result_var);
 
-    let jmp_instr = tac::JumpInstruction { target: end_label };
-    let instr_jmp = tac::Instruction::Jump(jmp_instr);
-    ctx.instrs.push(instr_jmp);
-
-    let label_instr = tac::Instruction::Label(true_label);
-    ctx.instrs.push(label_instr);
+    ctx.instrs.jmp(end_label);
+    ctx.instrs.label(true_label);
 
     let constant = tac::Constant { value: 1 };
     let value_const = tac::Value::Constant(constant);
-    let copy_instr = tac::CopyInstruction {
-        src: value_const,
-        dest: result_var,
-    };
-    let instr_copy = tac::Instruction::Copy(copy_instr);
-    ctx.instrs.push(instr_copy);
+    ctx.instrs.copy(value_const, result_var);
 
-    let label_instr = tac::Instruction::Label(end_label);
-    ctx.instrs.push(label_instr);
+    ctx.instrs.label(end_label);
 
     tac::Value::Variable(result_var)
 }
@@ -199,10 +144,7 @@ fn lower_binary_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) ->
     let rhs = lower_expr(ctx, &expr.rhs);
     let dest = ctx.temp_var();
 
-    let binary_instr = tac::BinaryInstruction { op, lhs, rhs, dest };
-    let instr = tac::Instruction::Binary(binary_instr);
-
-    ctx.instrs.push(instr);
+    ctx.instrs.binary(op, lhs, rhs, dest);
 
     tac::Value::Variable(dest)
 }
@@ -212,10 +154,7 @@ fn lower_unary_expr(ctx: &mut LoweringContext, expr: &ast::UnaryExpression) -> t
     let src = lower_expr(ctx, &expr.expr);
     let dest = ctx.temp_var();
 
-    let unary_instr = tac::UnaryInstruction { op, src, dest };
-    let instr = tac::Instruction::Unary(unary_instr);
-
-    ctx.instrs.push(instr);
+    ctx.instrs.unary(op, src,dest);
 
     tac::Value::Variable(dest)
 }
