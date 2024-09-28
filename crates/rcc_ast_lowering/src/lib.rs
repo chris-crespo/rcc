@@ -120,12 +120,21 @@ fn map_ast_binary_op(op: ast::BinaryOperator) -> tac::BinaryOperator {
         ast::BinaryOperator::BitwiseXor => tac::BinaryOperator::BitwiseXor,
         ast::BinaryOperator::LeftShift => tac::BinaryOperator::LeftShift,
         ast::BinaryOperator::RightShift => tac::BinaryOperator::RightShift,
+        ast::BinaryOperator::And => todo!(),
+        ast::BinaryOperator::Or => todo!(),
+        ast::BinaryOperator::Equal => todo!(),
+        ast::BinaryOperator::NotEqual => todo!(),
+        ast::BinaryOperator::LessThan => todo!(),
+        ast::BinaryOperator::LessThanEqual => todo!(),
+        ast::BinaryOperator::GreaterThan => todo!(),
+        ast::BinaryOperator::GreaterThanEqual => todo!(),
     }
 }
 
 fn map_ast_unary_op(op: ast::UnaryOperator) -> tac::UnaryOperator {
     match op {
         ast::UnaryOperator::Negation => tac::UnaryOperator::Negation,
+        ast::UnaryOperator::Not => todo!(),
         ast::UnaryOperator::BitwiseComplement => tac::UnaryOperator::BitwiseComplement,
     }
 }

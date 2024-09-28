@@ -51,7 +51,15 @@ pub enum BinaryOperator {
     BitwiseOr,
     BitwiseXor,
     LeftShift,
-    RightShift
+    RightShift,
+    And,
+    Or,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanEqual,
+    GreaterThan,
+    GreaterThanEqual
 }
 
 #[derive(Debug)]
@@ -64,6 +72,7 @@ pub struct UnaryExpression<'a> {
 #[derive(Debug, Clone, Copy)]
 pub enum UnaryOperator {
     Negation,
+    Not,
     BitwiseComplement
 }
 

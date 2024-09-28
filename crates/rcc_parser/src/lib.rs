@@ -11,6 +11,7 @@ mod diagnostics;
 
 fn map_unary_operator(kind: TokenKind) -> UnaryOperator {
     match kind {
+        TokenKind::Bang => UnaryOperator::Not,
         TokenKind::Minus => UnaryOperator::Negation,
         TokenKind::Tilde => UnaryOperator::BitwiseComplement,
         _ => unreachable!("Unary operator: {kind:?}"),
@@ -25,10 +26,18 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
         TokenKind::Slash => BinaryOperator::Divide,
         TokenKind::Percent => BinaryOperator::Remainder,
         TokenKind::Amp => BinaryOperator::BitwiseAnd,
+        TokenKind::Amp2 => BinaryOperator::And,
+        TokenKind::BangEq => BinaryOperator::NotEqual,
+        TokenKind::Eq2 => BinaryOperator::Equal,
         TokenKind::Pipe => BinaryOperator::BitwiseOr,
+        TokenKind::Pipe2 => BinaryOperator::Or,
         TokenKind::Caret => BinaryOperator::BitwiseXor,
+        TokenKind::Lt => BinaryOperator::LessThan,
         TokenKind::Lt2 => BinaryOperator::LeftShift,
+        TokenKind::LtEq => BinaryOperator::LessThanEqual,
+        TokenKind::Gt => BinaryOperator::GreaterThan,
         TokenKind::Gt2 => BinaryOperator::RightShift,
+        TokenKind::GtEq => BinaryOperator::GreaterThanEqual,
         _ => unreachable!("Binary operator: {kind:?}"),
     }
 }
@@ -36,9 +45,13 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Precedence {
     None,
+    LogicalOr,
+    LogincalAnd,
     BitwiseOr,
     BitwiseXor,
     BitwiseAnd,
+    Equality,
+    Comparison,
     Shift,
     Term,
     Factor,
@@ -47,10 +60,14 @@ enum Precedence {
 impl From<TokenKind> for Precedence {
     fn from(value: TokenKind) -> Self {
         match value {
-            TokenKind::Lt2 | TokenKind::Gt2 => Precedence::Shift,
-            TokenKind::Caret => Precedence::BitwiseXor,
+            TokenKind::Pipe2 => Precedence::LogicalOr,
+            TokenKind::Amp2 => Precedence::LogincalAnd,
             TokenKind::Pipe => Precedence::BitwiseOr,
+            TokenKind::Caret => Precedence::BitwiseXor,
             TokenKind::Amp => Precedence::BitwiseAnd,
+            TokenKind::Eq2 | TokenKind::BangEq => Precedence::Equality,
+            TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => Precedence::Comparison,
+            TokenKind::Lt2 | TokenKind::Gt2 => Precedence::Shift,
             TokenKind::Plus | TokenKind::Minus => Precedence::Term,
             TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Precedence::Factor,
             _ => Precedence::None,
@@ -225,8 +242,7 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn parse_expr_lhs(&mut self) -> Result<Expression<'src>> {
         match self.curr_kind() {
-            TokenKind::Minus => self.parse_expr_unary(),
-            TokenKind::Tilde => self.parse_expr_unary(),
+            TokenKind::Bang | TokenKind::Minus | TokenKind::Tilde => self.parse_expr_unary(),
             TokenKind::LeftParen => self.parse_expr_group(),
             TokenKind::Number => self.parse_expr_number_lit(),
             _ => Err(self.unexpected()),
