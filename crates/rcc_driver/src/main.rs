@@ -56,7 +56,7 @@ fn main() {
 }
 
 fn lex(filename: &str) {
-    let source = std::fs::read_to_string(filename).expect("Failed to read file.");
+    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
     let mut lexer = Lexer::new(&source);
     loop {
         let token = lexer.next_token();
@@ -72,7 +72,7 @@ fn lex(filename: &str) {
 }
 
 fn parse(filename: &str) {
-    let source = std::fs::read_to_string(filename).expect("Failed to read file.");
+    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
 
     let arena = Arena::new();
     let mut interner = Interner::new();
@@ -88,7 +88,7 @@ fn parse(filename: &str) {
 }
 
 fn tacky(filename: &str) {
-    let source = std::fs::read_to_string(filename).expect("Failed to read file.");
+    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
 
     let arena = Arena::new();
     let mut interner = Interner::new();
@@ -107,7 +107,7 @@ fn tacky(filename: &str) {
 }
 
 fn codegen(filename: &str) {
-    let source = std::fs::read_to_string(filename).expect("Failed to read file.");
+    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
 
     let arena = Arena::new();
     let mut interner = Interner::new();
@@ -127,7 +127,7 @@ fn codegen(filename: &str) {
 }
 
 fn compile(filename: &str) {
-    let source = std::fs::read_to_string(filename).expect("Failed to read file.");
+    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
 
     let arena = Arena::new();
     let mut interner = Interner::new();
@@ -148,11 +148,14 @@ fn compile(filename: &str) {
     rcc_codeemit::emit(&asm, &file, &mut interner).expect("Failed to emit assembly.");
 }
 
-fn spawn_preprocessor(filename: &str) -> std::io::Result<Child> {
-    Command::new("gcc")
+fn spawn_preprocessor(filename: &str) -> std::io::Result<String> {
+    let output = Command::new("gcc")
         .args(["-E", "-P", filename])
-        .stdout(Stdio::piped())
-        .spawn()
+        .output()?
+        .stdout;
+
+    let s = String::from_utf8(output).expect("Output from `gcc` is not UTF8");
+    Ok(s)
 }
 
 fn assemble(input: &str, output: &str) -> std::io::Result<()> {
