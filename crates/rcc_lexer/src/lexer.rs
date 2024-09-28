@@ -101,21 +101,51 @@ impl<'src> Lexer<'src> {
                 },
                 '%' => self.make_token(TokenKind::Percent),
                 '~' => self.make_token(TokenKind::Tilde),
-                '&' => self.make_token(TokenKind::Amp),
-                '|' => self.make_token(TokenKind::Pipe),
+                '&' => {
+                    if self.eat_char('&') {
+                        self.make_token(TokenKind::Amp2)
+                    } else {
+                        self.make_token(TokenKind::Amp)
+                    }
+                }
+                '!' => {
+                    if self.eat_char('=') {
+                        self.make_token(TokenKind::BangEq)
+                    } else {
+                        self.make_token(TokenKind::Bang)
+                    }
+                }
+                '|' => {
+                    if self.eat_char('|') {
+                        self.make_token(TokenKind::Pipe2)
+                    } else {
+                        self.make_token(TokenKind::Pipe)
+                    }
+                }
                 '^' => self.make_token(TokenKind::Caret),
+                '=' => {
+                    if self.eat_char('=') {
+                        self.make_token(TokenKind::Eq2)
+                    } else {
+                        self.make_token(TokenKind::Undetermined)
+                    }
+                }
                 '<' => {
                     if self.eat_char('<') {
                         self.make_token(TokenKind::Lt2)
+                    } else if self.eat_char('=') {
+                        self.make_token(TokenKind::LtEq)
                     } else {
-                        self.make_token(TokenKind::Undetermined)
+                        self.make_token(TokenKind::Lt)
                     }
                 }
                 '>' => {
                     if self.eat_char('>') {
                         self.make_token(TokenKind::Gt2)
+                    } else if self.eat_char('=') {
+                        self.make_token(TokenKind::GtEq)
                     } else {
-                        self.make_token(TokenKind::Undetermined)
+                        self.make_token(TokenKind::Gt)
                     }
                 }
                 '0'..='9' => self.parse_number(),
