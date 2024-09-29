@@ -127,7 +127,7 @@ impl<'src> Lexer<'src> {
                     if self.eat_char('=') {
                         self.make_token(TokenKind::Eq2)
                     } else {
-                        self.make_token(TokenKind::Undetermined)
+                        self.make_token(TokenKind::Eq)
                     }
                 }
                 '<' => {
