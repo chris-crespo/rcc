@@ -1,3 +1,4 @@
+use rcc_arena::Vec;
 use rcc_interner::Symbol;
 use rcc_span::Span;
 
@@ -17,7 +18,7 @@ pub struct FunctionDeclaration<'a> {
 #[derive(Debug)]
 pub struct Block<'a> {
     pub span: Span,
-    pub items: Vec<BlockItem<'a>>
+    pub items: Vec<'a, BlockItem<'a>>
 }
 
 #[derive(Debug)]

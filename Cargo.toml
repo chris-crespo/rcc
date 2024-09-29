@@ -19,6 +19,7 @@ rcc_parser       = { path = "./crates/rcc_parser/" }
 rcc_span         = { path = "./crates/rcc_span/" }
 rcc_tac          = { path = "./crates/rcc_tac/" }
 
-bumpalo = { version = "3.16.0", features = ["collections"] }
-clap   = { version = "4.5.17", features = ["derive"] }
-miette = { version = "7.2.0", features = ["fancy"] }
+allocator-api2 = { version = "0.2.18" }
+bumpalo        = { version = "3.16.0" }
+clap           = { version = "4.5.17", features = ["derive"] }
+miette         = { version = "7.2.0", features = ["fancy"] }

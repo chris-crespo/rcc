@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    process::{Child, Command, Stdio},
+    process::Command,
 };
 
 use clap::Parser as _;
@@ -84,7 +84,7 @@ fn parse(filename: &str) {
             println!("{:?}", err.with_source_code(source.clone()));
             std::process::exit(1)
         }
-    }
+    };
 }
 
 fn tacky(filename: &str) {

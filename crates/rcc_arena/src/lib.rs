@@ -2,6 +2,10 @@ use std::ops::Deref;
 
 use bumpalo::Bump;
 
+mod vec;
+
+pub use vec::Vec;
+
 pub struct Arena {
     bump: Bump,
 }
