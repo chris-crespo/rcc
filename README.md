@@ -10,7 +10,7 @@ This compiler is not intended to match the capabilities of those such as `gcc` o
 - [x] Unary Operators
 - [x] Binary Operators
 - [x] Bitwise Operators
-- [ ] Logical/Relational Operators
+- [x] Logical/Relational Operators
 - [ ] Local Variables
 - [ ] If Statements and Conditional Expressions
 - [ ] Compound Statements
