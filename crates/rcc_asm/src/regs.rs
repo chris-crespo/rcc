@@ -6,8 +6,8 @@ pub fn ax() -> Operand {
 }
 
 #[inline(always)]
-pub fn cl() -> Operand {
-    Operand::Register(RegisterOperand::Cl)
+pub fn cx() -> Operand {
+    Operand::Register(RegisterOperand::Cx)
 }
 
 #[inline(always)]

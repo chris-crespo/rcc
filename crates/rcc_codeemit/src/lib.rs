@@ -5,10 +5,11 @@ use std::{
 };
 
 use rcc_asm::{
-    AddInstruction, AndInstruction, FunctionDeclaration, IdivInstruction, ImmOperand, Instruction,
-    Label, MovInstruction, MulInstruction, NegInstruction, NotInstruction, Operand, OrInstruction,
-    Program, RegisterOperand, ShlInstruction, ShrInstruction, StackOperand, SubInstruction,
-    XorInstruction,
+    AddInstruction, AndInstruction, CmpInstruction, CondCode, FunctionDeclaration, IdivInstruction,
+    ImmOperand, Instruction, JmpCCInstruction, JmpInstruction, Label, MovInstruction,
+    MulInstruction, NegInstruction, NotInstruction, Operand, OrInstruction, Program,
+    RegisterOperand, SetCCInstruction, ShlInstruction, ShrInstruction, StackOperand,
+    SubInstruction, XorInstruction,
 };
 use rcc_interner::Interner;
 
@@ -26,11 +27,7 @@ impl<'a, 'src> EmitContext<'a, 'src> {
     }
 }
 
-pub fn emit<'a>(
-    program: &Program,
-    output: &'a File,
-    interner: &'a mut Interner,
-) -> io::Result<()> {
+pub fn emit<'a>(program: &Program, output: &'a File, interner: &'a mut Interner) -> io::Result<()> {
     let mut ctx = EmitContext::new(output, interner);
     emit_program(&mut ctx, program)
 }
@@ -44,10 +41,7 @@ fn emit_program(ctx: &mut EmitContext, program: &Program) -> io::Result<()> {
     Ok(())
 }
 
-fn emit_decl_func(
-    ctx: &mut EmitContext,
-    decl: &FunctionDeclaration,
-) -> io::Result<()> {
+fn emit_decl_func(ctx: &mut EmitContext, decl: &FunctionDeclaration) -> io::Result<()> {
     let label = format_label(ctx, decl.name);
     #[cfg(target_os = "macos")]
     let label = if id == "main" { "_main" } else { id };
@@ -85,11 +79,11 @@ fn emit_instr(ctx: &mut EmitContext, instr: &Instruction) -> io::Result<()> {
         Instruction::Sub(instr) => emit_instr_sub(ctx, instr),
         Instruction::Mul(instr) => emit_instr_mul(ctx, instr),
         Instruction::Idiv(instr) => emit_instr_idiv(ctx, instr),
-        Instruction::Cmp(_) => todo!(),
-        Instruction::Jmp(_) => todo!(),
-        Instruction::JmpCC(_) => todo!(),
-        Instruction::SetCC(_) => todo!(),
-        Instruction::Label(_) => todo!(),
+        Instruction::Cmp(instr) => emit_instr_cmp(ctx, instr),
+        Instruction::Jmp(instr) => emit_instr_jmp(ctx, instr),
+        Instruction::JmpCC(instr) => emit_instr_jmpcc(ctx, instr),
+        Instruction::SetCC(instr) => emit_instr_setcc(ctx, instr),
+        Instruction::Label(label) => emit_instr_label(ctx, *label),
         Instruction::And(instr) => emit_instr_and(ctx, instr),
         Instruction::Or(instr) => emit_instr_or(ctx, instr),
         Instruction::Xor(instr) => emit_instr_xor(ctx, instr),
@@ -142,6 +136,34 @@ fn emit_instr_idiv(ctx: &mut EmitContext, instr: &IdivInstruction) -> io::Result
     writeln!(ctx.output, "    idivl {}", src)
 }
 
+fn emit_instr_cmp(ctx: &mut EmitContext, instr: &CmpInstruction) -> io::Result<()> {
+    let src = format_operand(&instr.src);
+    let dest = format_operand(&instr.dest);
+    writeln!(ctx.output, "    cmpl {}, {}", src, dest)
+}
+
+fn emit_instr_jmp(ctx: &mut EmitContext, instr: &JmpInstruction) -> io::Result<()> {
+    let target = format_label(ctx, instr.target);
+    writeln!(ctx.output, "    jmp {}", target)
+}
+
+fn emit_instr_jmpcc(ctx: &mut EmitContext, instr: &JmpCCInstruction) -> io::Result<()> {
+    let cc = format_cc(instr.code);
+    let target = format_label(ctx, instr.target);
+    writeln!(ctx.output, "    j{} {}", cc, target)
+}
+
+fn emit_instr_setcc(ctx: &mut EmitContext, instr: &SetCCInstruction) -> io::Result<()> {
+    let cc = format_cc(instr.code);
+    let operand = format_byte_operand(&instr.src);
+    writeln!(ctx.output, "    set{} {}", cc, operand)
+}
+
+fn emit_instr_label(ctx: &mut EmitContext, label: Label) -> io::Result<()> {
+    let label = format_label(ctx, label);
+    emit_label(ctx, label)
+}
+
 fn emit_instr_and(ctx: &mut EmitContext, instr: &AndInstruction) -> io::Result<()> {
     let src = format_operand(&instr.src);
     let dest = format_operand(&instr.dest);
@@ -167,7 +189,7 @@ fn emit_instr_shl(ctx: &mut EmitContext, instr: &ShlInstruction) -> io::Result<(
 }
 
 fn emit_instr_shr(ctx: &mut EmitContext, instr: &ShrInstruction) -> io::Result<()> {
-    let src = format_operand(&instr.src);
+    let src = format_byte_operand(&instr.src);
     let dest = format_operand(&instr.dest);
     writeln!(ctx.output, "    shrl {}, {}", src, dest)
 }
@@ -192,11 +214,42 @@ fn emit_gnu_stack_hardening(ctx: &mut EmitContext) -> io::Result<()> {
     writeln!(ctx.output, "    .section .note.GNU-stack,\"\", @progbits\n")
 }
 
+fn format_cc(cc: CondCode) -> &'static str {
+    match cc {
+        CondCode::E => "e",
+        CondCode::Ne => "ne",
+        CondCode::G => "g",
+        CondCode::Ge => "ge",
+        CondCode::L => "l",
+        CondCode::Le => "le",
+    }
+}
+
 fn format_label<'src>(ctx: &mut EmitContext<'_, 'src>, label: Label) -> Cow<'src, str> {
     match label {
         Label::Named(label) => Cow::Borrowed(ctx.interner.get(label.symbol)),
         Label::Unnamed(label) => Cow::Owned(format!(".L{}", label.id)),
     }
+}
+
+fn format_byte_operand(operand: &Operand) -> Cow<'_, str> {
+    match operand {
+        Operand::Imm(imm) => format_imm(imm),
+        Operand::Register(reg) => format_byte_reg(reg),
+        Operand::Stack(stack) => format_stack_operand(stack),
+    }
+}
+
+fn format_byte_reg(register: &RegisterOperand) -> Cow<'static, str> {
+    let s = match register {
+        RegisterOperand::Ax => "%al",
+        RegisterOperand::Cx => "%cl",
+        RegisterOperand::Dx => "%dl",
+        RegisterOperand::R10 => "%r10b",
+        RegisterOperand::R11 => "%r11b",
+    };
+
+    Cow::Borrowed(s)
 }
 
 fn format_operand(operand: &Operand) -> Cow<'_, str> {
@@ -212,10 +265,10 @@ fn format_imm(imm: &ImmOperand) -> Cow<'_, str> {
     Cow::Owned(imm)
 }
 
-fn format_reg<'a>(register: &RegisterOperand) -> Cow<'a, str> {
+fn format_reg(register: &RegisterOperand) -> Cow<'static, str> {
     let s = match register {
         RegisterOperand::Ax => "%eax",
-        RegisterOperand::Cl => "%cl",
+        RegisterOperand::Cx => "%ecx",
         RegisterOperand::Dx => "%edx",
         RegisterOperand::R10 => "%r10d",
         RegisterOperand::R11 => "%r11d",

@@ -276,7 +276,7 @@ fn codegen_not_instr(ctx: &mut CodegenContext, instr: &tac::UnaryInstruction) {
     let zero = asm::Operand::Imm(asm::ImmOperand { value: 0 });
 
     let src = codegen_value(ctx, &instr.src);
-    ctx.instrs.cmp(zero, src);
+    ctx.instrs.cmp_fixup(zero, src);
 
     let dest = codegen_variable(ctx, &instr.dest);
     ctx.instrs.mov(zero, dest);
@@ -298,7 +298,7 @@ fn codegen_jmp_instr(ctx: &mut CodegenContext, instr: &tac::JumpInstruction) {
 fn codegen_jmpz_instr(ctx: &mut CodegenContext, instr: &tac::JumpIfZeroInstruction) {
     let zero = asm::Operand::Imm(asm::ImmOperand { value: 0 });
     let value = codegen_value(ctx, &instr.value);
-    ctx.instrs.cmp(zero, value);
+    ctx.instrs.cmp_fixup(zero, value);
 
     let target = codegen_label(instr.target);
     ctx.instrs.jmpe(target);
@@ -307,7 +307,7 @@ fn codegen_jmpz_instr(ctx: &mut CodegenContext, instr: &tac::JumpIfZeroInstructi
 fn codegen_jmpnz_instr(ctx: &mut CodegenContext, instr: &tac::JumpIfNotZeroInstruction) {
     let zero = asm::Operand::Imm(asm::ImmOperand { value: 0 });
     let value = codegen_value(ctx, &instr.value);
-    ctx.instrs.cmp(zero, value);
+    ctx.instrs.cmp_fixup(zero, value);
 
     let target = codegen_label(instr.target);
     ctx.instrs.jmpne(target);

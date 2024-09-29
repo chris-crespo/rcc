@@ -100,7 +100,7 @@ pub struct SetCCInstruction {
     pub src: Operand,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum CondCode {
     E,
     Ne,
@@ -155,7 +155,7 @@ pub struct ImmOperand {
 #[derive(Debug, Clone, Copy)]
 pub enum RegisterOperand {
     Ax,
-    Cl,
+    Cx,
     Dx,
     R10,
     R11,

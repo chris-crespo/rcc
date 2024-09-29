@@ -190,8 +190,8 @@ impl Instrs {
         if src.is_imm() {
             self.shl(src, dest)
         } else {
-            self.mov(src, asm::regs::cl());
-            self.shl(asm::regs::cl(), dest)
+            self.mov(src, asm::regs::cx());
+            self.shl(asm::regs::cx(), dest)
         }
     }
 
@@ -204,8 +204,8 @@ impl Instrs {
         if src.is_imm() {
             self.shr(src, dest)
         } else {
-            self.mov(src, asm::regs::cl());
-            self.shr(asm::regs::cl(), dest)
+            self.mov(src, asm::regs::cx());
+            self.shr(asm::regs::cx(), dest)
         }
     }
 
