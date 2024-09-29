@@ -92,6 +92,53 @@ impl Instrs {
         }
     }
 
+    pub fn jmp(&mut self, target: asm::Label) {
+        let jmp = asm::Instruction::Jmp(asm::JmpInstruction { target });
+        self.0.push(jmp)
+    }
+
+    pub fn cmp(&mut self, src: asm::Operand, dest: asm::Operand) {
+        let cmp = asm::Instruction::Cmp(asm::CmpInstruction { src, dest });
+        self.0.push(cmp)
+    }
+
+    pub fn cmp_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+        if src.is_mem_addr() && dest.is_mem_addr() {
+            self.mov(src, asm::regs::r10());
+            self.cmp(asm::regs::r10(), dest);
+        } else if dest.is_imm() {
+            self.mov(dest, asm::regs::r11());
+            self.cmp(src, asm::regs::r11());
+        } else {
+            self.cmp(src, dest);
+        }
+    }
+
+    pub fn jmpcc(&mut self, code: asm::CondCode, target: asm::Label) {
+        let jmpcc = asm::Instruction::JmpCC(asm::JmpCCInstruction { code, target });
+        self.0.push(jmpcc)
+    }
+
+    #[inline(always)]
+    pub fn jmpe(&mut self, target: asm::Label) {
+        self.jmpcc(asm::CondCode::E, target)
+    }
+
+    #[inline(always)]
+    pub fn jmpne(&mut self, target: asm::Label) {
+        self.jmpcc(asm::CondCode::Ne, target)
+    }
+
+    pub fn label(&mut self, label: asm::Label) {
+        let label = asm::Instruction::Label(label);
+        self.0.push(label)
+    }
+
+    pub fn setcc(&mut self, code: asm::CondCode, src: asm::Operand) {
+        let setcc = asm::Instruction::SetCC(asm::SetCCInstruction { code, src });
+        self.0.push(setcc)
+    }
+
     pub fn and(&mut self, src: asm::Operand, dest: asm::Operand) {
         let and = asm::Instruction::And(asm::AndInstruction { src, dest });
         self.0.push(and)

@@ -4,16 +4,21 @@ use std::{
     io::{self, BufWriter, Write},
 };
 
-use rcc_asm::{AddInstruction, AndInstruction, FunctionDeclaration, IdivInstruction, ImmOperand, Instruction, MovInstruction, MulInstruction, NegInstruction, NotInstruction, Operand, OrInstruction, Program, RegisterOperand, ShlInstruction, ShrInstruction, StackOperand, SubInstruction, XorInstruction};
+use rcc_asm::{
+    AddInstruction, AndInstruction, FunctionDeclaration, IdivInstruction, ImmOperand, Instruction,
+    Label, MovInstruction, MulInstruction, NegInstruction, NotInstruction, Operand, OrInstruction,
+    Program, RegisterOperand, ShlInstruction, ShrInstruction, StackOperand, SubInstruction,
+    XorInstruction,
+};
 use rcc_interner::Interner;
 
-struct EmitContext<'a> {
-    interner: &'a mut Interner<'a>,
+struct EmitContext<'a, 'src> {
+    interner: &'a Interner<'src>,
     output: BufWriter<&'a File>,
 }
 
-impl<'a> EmitContext<'a> {
-    pub fn new(output: &'a File, interner: &'a mut Interner<'a>) -> EmitContext<'a> {
+impl<'a, 'src> EmitContext<'a, 'src> {
+    pub fn new(output: &'a File, interner: &'a Interner<'src>) -> EmitContext<'a, 'src> {
         EmitContext {
             output: BufWriter::new(output),
             interner,
@@ -24,7 +29,7 @@ impl<'a> EmitContext<'a> {
 pub fn emit<'a>(
     program: &Program,
     output: &'a File,
-    interner: &'a mut Interner<'a>,
+    interner: &'a mut Interner,
 ) -> io::Result<()> {
     let mut ctx = EmitContext::new(output, interner);
     emit_program(&mut ctx, program)
@@ -39,8 +44,11 @@ fn emit_program(ctx: &mut EmitContext, program: &Program) -> io::Result<()> {
     Ok(())
 }
 
-fn emit_decl_func(ctx: &mut EmitContext, decl: &FunctionDeclaration) -> io::Result<()> {
-    let label = ctx.interner.get(decl.name.symbol);
+fn emit_decl_func(
+    ctx: &mut EmitContext,
+    decl: &FunctionDeclaration,
+) -> io::Result<()> {
+    let label = format_label(ctx, decl.name);
     #[cfg(target_os = "macos")]
     let label = if id == "main" { "_main" } else { id };
 
@@ -77,6 +85,11 @@ fn emit_instr(ctx: &mut EmitContext, instr: &Instruction) -> io::Result<()> {
         Instruction::Sub(instr) => emit_instr_sub(ctx, instr),
         Instruction::Mul(instr) => emit_instr_mul(ctx, instr),
         Instruction::Idiv(instr) => emit_instr_idiv(ctx, instr),
+        Instruction::Cmp(_) => todo!(),
+        Instruction::Jmp(_) => todo!(),
+        Instruction::JmpCC(_) => todo!(),
+        Instruction::SetCC(_) => todo!(),
+        Instruction::Label(_) => todo!(),
         Instruction::And(instr) => emit_instr_and(ctx, instr),
         Instruction::Or(instr) => emit_instr_or(ctx, instr),
         Instruction::Xor(instr) => emit_instr_xor(ctx, instr),
@@ -171,7 +184,7 @@ fn emit_instr_ret(ctx: &mut EmitContext) -> io::Result<()> {
     Ok(())
 }
 
-fn emit_label(ctx: &mut EmitContext, label: &str) -> io::Result<()> {
+fn emit_label(ctx: &mut EmitContext, label: Cow<'_, str>) -> io::Result<()> {
     writeln!(ctx.output, "{}:", label)
 }
 
@@ -179,11 +192,18 @@ fn emit_gnu_stack_hardening(ctx: &mut EmitContext) -> io::Result<()> {
     writeln!(ctx.output, "    .section .note.GNU-stack,\"\", @progbits\n")
 }
 
+fn format_label<'src>(ctx: &mut EmitContext<'_, 'src>, label: Label) -> Cow<'src, str> {
+    match label {
+        Label::Named(label) => Cow::Borrowed(ctx.interner.get(label.symbol)),
+        Label::Unnamed(label) => Cow::Owned(format!("l.{}", label.id)),
+    }
+}
+
 fn format_operand(operand: &Operand) -> Cow<'_, str> {
     match operand {
         Operand::Imm(imm) => format_imm(imm),
         Operand::Register(reg) => format_reg(reg),
-        Operand::Stack(op) => format_stack_operand(op)
+        Operand::Stack(op) => format_stack_operand(op),
     }
 }
 

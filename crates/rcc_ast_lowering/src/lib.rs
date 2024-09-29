@@ -31,7 +31,7 @@ impl LoweringContext {
         let label = self.labels;
         self.labels += 1;
 
-        tac::Label::new(label)
+        tac::Label { id: label }
     }
 }
 
