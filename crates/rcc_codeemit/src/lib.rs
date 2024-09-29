@@ -195,7 +195,7 @@ fn emit_gnu_stack_hardening(ctx: &mut EmitContext) -> io::Result<()> {
 fn format_label<'src>(ctx: &mut EmitContext<'_, 'src>, label: Label) -> Cow<'src, str> {
     match label {
         Label::Named(label) => Cow::Borrowed(ctx.interner.get(label.symbol)),
-        Label::Unnamed(label) => Cow::Owned(format!("l.{}", label.id)),
+        Label::Unnamed(label) => Cow::Owned(format!(".L{}", label.id)),
     }
 }
 
