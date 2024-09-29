@@ -11,7 +11,7 @@ This compiler is not intended to match the capabilities of those such as `gcc` o
 - [x] Binary Operators
 - [x] Bitwise Operators
 - [x] Logical/Relational Operators
-- [ ] Local Variables
+- [ ] Local Variables ([*In progress*](https://www.github.com/chris-crespo/rcc/tree/ch5))
 - [ ] If Statements and Conditional Expressions
 - [ ] Compound Statements
 - [ ] Loops
