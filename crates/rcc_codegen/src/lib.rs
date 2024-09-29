@@ -98,7 +98,7 @@ fn codegen_binary_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction
         tac::BinaryOperator::BitwiseOr => codegen_or_instr(ctx, instr),
         tac::BinaryOperator::BitwiseXor => codegen_xor_instr(ctx, instr),
         tac::BinaryOperator::LeftShift => codegen_shl_instr(ctx, instr),
-        tac::BinaryOperator::RightShift => codegen_shr_instr(ctx, instr),
+        tac::BinaryOperator::RightShift => codegen_sar_instr(ctx, instr),
         tac::BinaryOperator::Equal => codegen_eq_instr(ctx, instr),
         tac::BinaryOperator::NotEqual => codegen_neq_instr(ctx, instr),
         tac::BinaryOperator::LessThan => codegen_lt_instr(ctx, instr),
@@ -195,13 +195,13 @@ fn codegen_shl_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
     ctx.instrs.shl_fixup(rhs, dest);
 }
 
-fn codegen_shr_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
+fn codegen_sar_instr(ctx: &mut CodegenContext, instr: &tac::BinaryInstruction) {
     let lhs = codegen_value(ctx, &instr.lhs);
     let dest = codegen_variable(ctx, &instr.dest);
     ctx.instrs.mov_fixup(lhs, dest);
 
     let rhs = codegen_value(ctx, &instr.rhs);
-    ctx.instrs.shr_fixup(rhs, dest);
+    ctx.instrs.sar_fixup(rhs, dest);
 }
 
 fn codegen_relational_instr(

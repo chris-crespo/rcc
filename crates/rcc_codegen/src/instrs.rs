@@ -195,17 +195,17 @@ impl Instrs {
         }
     }
 
-    pub fn shr(&mut self, src: asm::Operand, dest: asm::Operand) {
-        let shr = asm::Instruction::Shr(asm::ShrInstruction { src, dest });
-        self.0.push(shr)
+    pub fn sar(&mut self, src: asm::Operand, dest: asm::Operand) {
+        let sar = asm::Instruction::Sar(asm::SarInstruction { src, dest });
+        self.0.push(sar)
     }
 
-    pub fn shr_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
+    pub fn sar_fixup(&mut self, src: asm::Operand, dest: asm::Operand) {
         if src.is_imm() {
-            self.shr(src, dest)
+            self.sar(src, dest)
         } else {
             self.mov(src, asm::regs::cx());
-            self.shr(asm::regs::cx(), dest)
+            self.sar(asm::regs::cx(), dest)
         }
     }
 

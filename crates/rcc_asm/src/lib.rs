@@ -33,7 +33,7 @@ pub enum Instruction {
     Or(OrInstruction),
     Xor(XorInstruction),
     Shl(ShlInstruction),
-    Shr(ShrInstruction),
+    Sar(SarInstruction),
     Cdq,
     Ret,
 }
@@ -135,7 +135,7 @@ pub struct ShlInstruction {
 }
 
 #[derive(Debug)]
-pub struct ShrInstruction {
+pub struct SarInstruction {
     pub src: Operand,
     pub dest: Operand,
 }

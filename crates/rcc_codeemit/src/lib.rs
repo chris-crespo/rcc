@@ -8,7 +8,7 @@ use rcc_asm::{
     AddInstruction, AndInstruction, CmpInstruction, CondCode, FunctionDeclaration, IdivInstruction,
     ImmOperand, Instruction, JmpCCInstruction, JmpInstruction, Label, MovInstruction,
     MulInstruction, NegInstruction, NotInstruction, Operand, OrInstruction, Program,
-    RegisterOperand, SetCCInstruction, ShlInstruction, ShrInstruction, StackOperand,
+    RegisterOperand, SetCCInstruction, ShlInstruction, SarInstruction, StackOperand,
     SubInstruction, XorInstruction,
 };
 use rcc_interner::Interner;
@@ -88,7 +88,7 @@ fn emit_instr(ctx: &mut EmitContext, instr: &Instruction) -> io::Result<()> {
         Instruction::Or(instr) => emit_instr_or(ctx, instr),
         Instruction::Xor(instr) => emit_instr_xor(ctx, instr),
         Instruction::Shl(instr) => emit_instr_shl(ctx, instr),
-        Instruction::Shr(instr) => emit_instr_shr(ctx, instr),
+        Instruction::Sar(instr) => emit_instr_sar(ctx, instr),
         Instruction::Cdq => emit_instr_cdq(ctx),
         Instruction::Ret => emit_instr_ret(ctx),
     }
@@ -188,10 +188,10 @@ fn emit_instr_shl(ctx: &mut EmitContext, instr: &ShlInstruction) -> io::Result<(
     writeln!(ctx.output, "    shll {}, {}", src, dest)
 }
 
-fn emit_instr_shr(ctx: &mut EmitContext, instr: &ShrInstruction) -> io::Result<()> {
+fn emit_instr_sar(ctx: &mut EmitContext, instr: &SarInstruction) -> io::Result<()> {
     let src = format_byte_operand(&instr.src);
     let dest = format_operand(&instr.dest);
-    writeln!(ctx.output, "    shrl {}, {}", src, dest)
+    writeln!(ctx.output, "    sarl {}, {}", src, dest)
 }
 
 fn emit_instr_cdq(ctx: &mut EmitContext) -> io::Result<()> {
