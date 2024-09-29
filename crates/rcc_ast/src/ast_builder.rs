@@ -4,8 +4,7 @@ use rcc_arena::Arena;
 use rcc_span::Span;
 
 use crate::{
-    BinaryExpression, BinaryOperator, Expression, FunctionDeclaration, Identifier, NumberLiteral,
-    Program, ReturnStatement, Statement, UnaryExpression, UnaryOperator,
+    BinaryExpression, BinaryOperator, Block, Expression, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement, Statement, UnaryExpression, UnaryOperator
 };
 
 pub struct AstBuilder<'a> {
@@ -30,9 +29,9 @@ impl<'a> AstBuilder<'a> {
         &self,
         span: Span,
         name: Identifier,
-        stmt: Statement<'a>,
+        body: Block<'a>,
     ) -> FunctionDeclaration<'a> {
-        FunctionDeclaration { span, name, stmt }
+        FunctionDeclaration { span, name, body }
     }
 
     pub fn stmt_return(&self, span: Span, expr: Expression<'a>) -> Statement<'a> {

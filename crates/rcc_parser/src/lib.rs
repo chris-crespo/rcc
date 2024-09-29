@@ -1,7 +1,6 @@
 use rcc_arena::Arena;
 use rcc_ast::{
-    AstBuilder, BinaryOperator, Expression, FunctionDeclaration, Identifier, Program, Statement,
-    UnaryOperator,
+    AstBuilder, BinaryOperator, Block, BlockItem, Expression, FunctionDeclaration, Identifier, Program, Statement, UnaryOperator
 };
 use rcc_interner::Interner;
 use rcc_lexer::{Lexer, Token, TokenKind};
@@ -197,14 +196,26 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.expect(TokenKind::Void)?;
         self.expect(TokenKind::RightParen)?;
 
-        self.expect(TokenKind::LeftBrace)?;
-        let stmt = self.parse_stmt()?;
-        self.expect(TokenKind::RightBrace)?;
+        let body = self.parse_block()?;
 
         let span = self.end_span(span);
-        let decl = self.ast.decl_func(span, name, stmt);
+        let decl = self.ast.decl_func(span, name, body);
 
         Ok(decl)
+    }
+
+    fn parse_block(&mut self) -> Result<Block<'src>> {
+        self.expect(TokenKind::LeftBrace)?;
+
+        while !self.eat(TokenKind::RightParen) {
+            let item = self.parse_block_item()?;
+        }
+
+        todo!()
+    }
+
+    fn parse_block_item(&mut self) -> Result<BlockItem<'src>> {
+        todo!()
     }
 
     fn parse_stmt(&mut self) -> Result<Statement<'src>> {

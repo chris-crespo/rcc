@@ -49,7 +49,7 @@ fn lower_decl_func(
     ctx: &mut LoweringContext,
     func: &ast::FunctionDeclaration,
 ) -> tac::FunctionDeclaration {
-    lower_stmt(ctx, &func.stmt);
+    lower_block(ctx, &func.body);
 
     let name = map_ast_id(&func.name);
     let body = ctx.instrs.take();
@@ -57,9 +57,15 @@ fn lower_decl_func(
     tac::FunctionDeclaration { name, body }
 }
 
+fn lower_block(ctx: &mut LoweringContext, block: &ast::Block)  {
+    todo!()
+}
+
 fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
     match stmt {
+        ast::Statement::Expression(_) => todo!(),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
+        ast::Statement::Empty => todo!(),
     }
 }
 
@@ -71,6 +77,8 @@ fn lower_return_stmt(ctx: &mut LoweringContext, stmt: &ast::ReturnStatement) {
 fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
     match expr {
         ast::Expression::NumberLiteral(lit) => map_number_literal(lit),
+        ast::Expression::Identifier(_) => todo!(),
+        ast::Expression::Assignment(_) => todo!(),
         ast::Expression::Binary(expr) if expr.op == ast::BinaryOperator::And => {
             lower_and_expr(ctx, expr)
         }

@@ -11,12 +11,44 @@ pub struct Program<'a> {
 pub struct FunctionDeclaration<'a> {
     pub span: Span,
     pub name: Identifier,
-    pub stmt: Statement<'a>
+    pub body: Block<'a>
+}
+
+#[derive(Debug)]
+pub struct Block<'a> {
+    pub span: Span,
+    pub items: Vec<BlockItem<'a>>
+}
+
+#[derive(Debug)]
+pub enum BlockItem<'a> {
+    Declaration(&'a Declaration<'a>),
+    Statement(&'a Statement<'a>)
+}
+
+#[derive(Debug)]
+pub enum Declaration<'a> {
+    Variable(&'a VariableDeclaration<'a>)
+}
+
+#[derive(Debug)]
+pub struct VariableDeclaration<'a> {
+    pub span: Span,
+    pub id: Identifier,
+    pub expr: Option<Expression<'a>>
 }
 
 #[derive(Debug)]
 pub enum Statement<'a> {
-    Return(&'a ReturnStatement<'a>)
+    Expression(&'a ExpressionStatement<'a>),
+    Return(&'a ReturnStatement<'a>),
+    Empty
+}
+
+#[derive(Debug)]
+pub struct ExpressionStatement<'a> {
+    pub span: Span,
+    pub expr: Expression<'a>
 }
 
 #[derive(Debug)]
@@ -28,8 +60,23 @@ pub struct ReturnStatement<'a> {
 #[derive(Debug)]
 pub enum Expression<'a> {
     NumberLiteral(&'a NumberLiteral),
+    Identifier(&'a Identifier),
+
+    Assignment(&'a AssignmentExpression<'a>),
     Binary(&'a BinaryExpression<'a>),
     Unary(&'a UnaryExpression<'a>)
+}
+
+#[derive(Debug)]
+pub struct AssignmentExpression<'a> {
+    pub span: Span,
+    pub lvalue: Lvalue,
+    pub expr: Expression<'a>
+}
+
+#[derive(Debug)]
+pub enum Lvalue {
+    Identifier(Identifier),
 }
 
 #[derive(Debug)]
