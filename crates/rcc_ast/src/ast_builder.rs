@@ -21,6 +21,10 @@ impl<'a> AstBuilder<'a> {
         self.arena.alloc(value)
     }
 
+    pub fn vec<T>(&self) -> rcc_arena::Vec<'a, T> {
+        rcc_arena::Vec::new_in(self.arena)
+    }
+
     pub fn program(&self, span: Span, func: FunctionDeclaration<'a>) -> Program<'a> {
         Program { span, func }
     }
