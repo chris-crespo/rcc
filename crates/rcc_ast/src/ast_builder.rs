@@ -1,10 +1,8 @@
-use std::fmt::Binary;
-
 use rcc_arena::Arena;
 use rcc_span::Span;
 
 use crate::{
-    BinaryExpression, BinaryOperator, Block, Expression, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement, Statement, UnaryExpression, UnaryOperator
+    BinaryExpression, BinaryOperator, Block, BlockItem, Declaration, EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement, Statement, UnaryExpression, UnaryOperator, VariableDeclaration
 };
 
 pub struct AstBuilder<'a> {
@@ -38,6 +36,46 @@ impl<'a> AstBuilder<'a> {
         FunctionDeclaration { span, name, body }
     }
 
+    pub fn block(&self, span: Span, items: rcc_arena::Vec<'a, BlockItem<'a>>) -> Block<'a> {
+        Block { span, items }
+    }
+
+    pub fn block_item_decl(&self, decl: Declaration<'a>) -> BlockItem<'a> {
+        BlockItem::Declaration(self.alloc(decl))
+    }
+
+    pub fn block_item_stmt(&self, stmt: Statement<'a>) -> BlockItem<'a> {
+        BlockItem::Statement(self.alloc(stmt))
+    }
+
+    pub fn decl_var(
+        &self,
+        span: Span,
+        id: Identifier,
+        expr: Option<Expression<'a>>,
+    ) -> Declaration<'a> {
+        let decl_var = self.var_decl(span, id, expr);
+        Declaration::Variable(self.alloc(decl_var))
+    }
+
+    pub fn var_decl(
+        &self,
+        span: Span,
+        id: Identifier,
+        expr: Option<Expression<'a>>,
+    ) -> VariableDeclaration<'a> {
+        VariableDeclaration { span, id, expr }
+    }
+
+    pub fn stmt_empty(&self, span: Span) -> Statement<'a> {
+        let empty_stmt = self.empty_stmt(span);
+        Statement::Empty(self.alloc(empty_stmt))
+    }
+
+    pub fn empty_stmt(&self, span: Span) -> EmptyStatement {
+        EmptyStatement { span }
+    }
+
     pub fn stmt_return(&self, span: Span, expr: Expression<'a>) -> Statement<'a> {
         let return_stmt = self.return_stmt(span, expr);
         Statement::Return(self.alloc(return_stmt))
@@ -45,6 +83,15 @@ impl<'a> AstBuilder<'a> {
 
     pub fn return_stmt(&self, span: Span, expr: Expression<'a>) -> ReturnStatement<'a> {
         ReturnStatement { span, expr }
+    }
+
+    pub fn stmt_expr(&self, span: Span ,expr: Expression<'a>) -> Statement<'a> {
+        let expr_stmt = self.expr_stmt(span, expr);
+        Statement::Expression(self.alloc(expr_stmt))
+    }
+
+    pub fn expr_stmt(&self, span: Span, expr: Expression<'a>) -> ExpressionStatement<'a> {
+        ExpressionStatement { span, expr }
     }
 
     pub fn expr_binary(
@@ -94,5 +141,9 @@ impl<'a> AstBuilder<'a> {
 
     pub fn number_lit(&self, span: Span, value: u64) -> NumberLiteral {
         NumberLiteral { span, value }
+    }
+
+    pub fn expr_id(&self, id: Identifier) -> Expression<'a> {
+        Expression::Identifier(self.alloc(id))
     }
 }

@@ -1,6 +1,7 @@
 use rcc_arena::Arena;
 use rcc_ast::{
-    AstBuilder, BinaryOperator, Block, BlockItem, Expression, FunctionDeclaration, Identifier, Program, Statement, UnaryOperator
+    AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression, FunctionDeclaration,
+    Identifier, Program, Statement, UnaryOperator,
 };
 use rcc_interner::Interner;
 use rcc_lexer::{Lexer, Token, TokenKind};
@@ -27,6 +28,7 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
         TokenKind::Amp => BinaryOperator::BitwiseAnd,
         TokenKind::Amp2 => BinaryOperator::And,
         TokenKind::BangEq => BinaryOperator::NotEqual,
+        TokenKind::Eq => BinaryOperator::Assign,
         TokenKind::Eq2 => BinaryOperator::Equal,
         TokenKind::Pipe => BinaryOperator::BitwiseOr,
         TokenKind::Pipe2 => BinaryOperator::Or,
@@ -44,8 +46,9 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Precedence {
     None,
+    Assignment,
     LogicalOr,
-    LogincalAnd,
+    LogicalAnd,
     BitwiseOr,
     BitwiseXor,
     BitwiseAnd,
@@ -56,16 +59,37 @@ enum Precedence {
     Factor,
 }
 
+impl Precedence {
+    fn prev(self) -> Precedence {
+        match self {
+            Precedence::None | Precedence::Assignment => Precedence::None,
+            Precedence::LogicalOr => Precedence::Assignment,
+            Precedence::LogicalAnd => Precedence::LogicalOr,
+            Precedence::BitwiseOr => Precedence::LogicalAnd,
+            Precedence::BitwiseXor => Precedence::BitwiseOr,
+            Precedence::BitwiseAnd => Precedence::BitwiseXor,
+            Precedence::Equality => Precedence::BitwiseAnd,
+            Precedence::Comparison => Precedence::Equality,
+            Precedence::Shift => Precedence::Comparison,
+            Precedence::Term => Precedence::Shift,
+            Precedence::Factor => Precedence::Term,
+        }
+    }
+}
+
 impl From<TokenKind> for Precedence {
     fn from(value: TokenKind) -> Self {
         match value {
+            TokenKind::Eq => Precedence::Assignment,
             TokenKind::Pipe2 => Precedence::LogicalOr,
-            TokenKind::Amp2 => Precedence::LogincalAnd,
+            TokenKind::Amp2 => Precedence::LogicalAnd,
             TokenKind::Pipe => Precedence::BitwiseOr,
             TokenKind::Caret => Precedence::BitwiseXor,
             TokenKind::Amp => Precedence::BitwiseAnd,
             TokenKind::Eq2 | TokenKind::BangEq => Precedence::Equality,
-            TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => Precedence::Comparison,
+            TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => {
+                Precedence::Comparison
+            }
             TokenKind::Lt2 | TokenKind::Gt2 => Precedence::Shift,
             TokenKind::Plus | TokenKind::Minus => Precedence::Term,
             TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Precedence::Factor,
@@ -205,21 +229,82 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_block(&mut self) -> Result<Block<'src>> {
+        let mut items = self.ast.vec();
+        let span = self.start_span();
+
         self.expect(TokenKind::LeftBrace)?;
 
-        while !self.eat(TokenKind::RightParen) {
+        while !self.eat(TokenKind::RightBrace) {
             let item = self.parse_block_item()?;
+            items.push(item);
         }
 
-        todo!()
+        let span = self.end_span(span);
+        let block = self.ast.block(span, items);
+
+        Ok(block)
     }
 
     fn parse_block_item(&mut self) -> Result<BlockItem<'src>> {
-        todo!()
+        let kind = self.curr_kind();
+        match kind {
+            TokenKind::Int => self.parse_block_item_decl(),
+            _ => self.parse_block_item_stmt(),
+        }
+    }
+
+    fn parse_block_item_decl(&mut self) -> Result<BlockItem<'src>> {
+        let decl = self.parse_decl()?;
+        let block_item_decl = self.ast.block_item_decl(decl);
+        Ok(block_item_decl)
+    }
+
+    fn parse_block_item_stmt(&mut self) -> Result<BlockItem<'src>> {
+        let stmt = self.parse_stmt()?;
+        let block_item_stmt = self.ast.block_item_stmt(stmt);
+        Ok(block_item_stmt)
+    }
+
+    fn parse_decl(&mut self) -> Result<Declaration<'src>> {
+        self.parse_decl_var()
+    }
+
+    fn parse_decl_var(&mut self) -> Result<Declaration<'src>> {
+        let span = self.start_span();
+        self.expect(TokenKind::Int)?;
+
+        let id = self.parse_id()?;
+        let expr = if self.eat(TokenKind::Eq) {
+            let expr = self.parse_expr()?;
+            Some(expr)
+        } else {
+            None
+        };
+
+        self.expect(TokenKind::Semicolon)?;
+
+        let span = self.end_span(span);
+        let decl = self.ast.decl_var(span, id, expr);
+
+        Ok(decl)
     }
 
     fn parse_stmt(&mut self) -> Result<Statement<'src>> {
-        let stmt = self.parse_stmt_return()?;
+        let kind = self.curr_kind();
+        match kind {
+            TokenKind::Semicolon => self.parse_stmt_empty(),
+            TokenKind::Return => self.parse_stmt_return(),
+            _ => self.parse_stmt_expr(),
+        }
+    }
+
+    fn parse_stmt_empty(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.expect(TokenKind::Semicolon)?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_empty(span);
+
         Ok(stmt)
     }
 
@@ -232,6 +317,18 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let span = self.end_span(span);
         let stmt = self.ast.stmt_return(span, expr);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_expr(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        let expr = self.parse_expr()?;
+
+        self.expect(TokenKind::Semicolon)?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_expr(span, expr);
 
         Ok(stmt)
     }
@@ -256,6 +353,7 @@ impl<'a, 'src> Parser<'a, 'src> {
             TokenKind::Bang | TokenKind::Minus | TokenKind::Tilde => self.parse_expr_unary(),
             TokenKind::LeftParen => self.parse_expr_group(),
             TokenKind::Number => self.parse_expr_number_lit(),
+            TokenKind::Identifier => self.parse_expr_id(),
             _ => Err(self.unexpected()),
         }
     }
@@ -267,7 +365,16 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.bump(); // Skip operator.
 
         let op = map_binary_operator(kind);
-        let rhs = self.parse_expr_(Precedence::from(kind))?;
+        let precedence = {
+            let precedence = Precedence::from(kind);
+            if op.right_assoc() {
+                precedence.prev()
+            } else {
+                precedence
+            }
+        };
+
+        let rhs = self.parse_expr_(precedence)?;
 
         let span = self.end_span(span);
         let expr = self.ast.expr_binary(span, op, lhs, rhs);
@@ -312,6 +419,13 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let span = self.end_span(span);
         let expr = self.ast.expr_number_lit(span, value);
+
+        Ok(expr)
+    }
+
+    fn parse_expr_id(&mut self) -> Result<Expression<'src>> {
+        let id = self.parse_id()?;
+        let expr = self.ast.expr_id(id);
 
         Ok(expr)
     }

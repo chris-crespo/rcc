@@ -65,7 +65,7 @@ fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
     match stmt {
         ast::Statement::Expression(_) => todo!(),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
-        ast::Statement::Empty => todo!(),
+        ast::Statement::Empty(_) => todo!(),
     }
 }
 
