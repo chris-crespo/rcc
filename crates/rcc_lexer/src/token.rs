@@ -45,6 +45,7 @@ pub enum TokenKind {
 
     Int,
     Return,
+    Typedef,
     Void,
 
     Identifier,
@@ -85,6 +86,7 @@ impl TokenKind {
             TokenKind::GtEq => ">=",
             TokenKind::Int => "int",
             TokenKind::Return => "return",
+            TokenKind::Typedef => "typedef",
             TokenKind::Void => "void",
             TokenKind::Identifier => "identifier",
             TokenKind::Number => "number",

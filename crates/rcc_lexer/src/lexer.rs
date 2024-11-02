@@ -189,6 +189,7 @@ impl<'src> Lexer<'src> {
         match self.source() {
             "int" => self.make_token(TokenKind::Int),
             "return" => self.make_token(TokenKind::Return),
+            "typedef" => self.make_token(TokenKind::Typedef),
             "void" => self.make_token(TokenKind::Void),
             _ => self.make_token(TokenKind::Identifier),
         }
