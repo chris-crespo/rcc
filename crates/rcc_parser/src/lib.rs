@@ -1,9 +1,12 @@
+use std::collections::{HashMap, HashSet};
+
+use miette::diagnostic;
 use rcc_arena::Arena;
 use rcc_ast::{
     AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression, FunctionDeclaration,
     Identifier, Program, Statement, UnaryOperator,
 };
-use rcc_interner::Interner;
+use rcc_interner::{Interner, Symbol};
 use rcc_lexer::{Lexer, Token, TokenKind};
 use rcc_span::Span;
 
@@ -98,6 +101,12 @@ impl From<TokenKind> for Precedence {
     }
 }
 
+#[derive(Debug, Default)]
+struct Scope {
+    functions: HashMap<Symbol, Span>,
+    variables: HashMap<Symbol, Span>,
+}
+
 type Result<T> = std::result::Result<T, miette::Report>;
 
 pub struct Parser<'a, 'src> {
@@ -109,6 +118,8 @@ pub struct Parser<'a, 'src> {
 
     curr_token: Token,
     prev_token_end: u32,
+
+    scopes: Vec<Scope>,
 }
 
 impl<'a, 'src> Parser<'a, 'src> {
@@ -126,6 +137,8 @@ impl<'a, 'src> Parser<'a, 'src> {
 
             curr_token: Token::default(),
             prev_token_end: 0,
+
+            scopes: Vec::new(),
         };
 
         parser.bump();
@@ -196,39 +209,115 @@ impl<'a, 'src> Parser<'a, 'src> {
         diagnostics::unexpected(self.curr_token.span)
     }
 
+    fn start_scope(&mut self) {
+        let scope = Scope::default();
+        self.scopes.push(scope)
+    }
+
+    fn end_scope(&mut self) {
+        self.scopes.pop().expect("scopes should never be empty");
+    }
+
+    fn scoped<F, T>(&mut self, f: F) -> Result<T>
+    where
+        F: FnOnce(&mut Parser<'a, 'src>) -> Result<T>,
+    {
+        self.start_scope();
+
+        let result = f(self);
+        self.end_scope();
+
+        result
+    }
+
+    fn curr_scope_mut(&mut self) -> &mut Scope {
+        self.scopes
+            .last_mut()
+            .expect("scopes should never be empty")
+    }
+
+    fn declare_function(&mut self, id: &Identifier) -> Result<()> {
+        let curr_scope = self.curr_scope_mut();
+        if let Some(&span) = curr_scope.functions.get(&id.symbol) {
+            let source_id = self.interner.get(id.symbol);
+            return Err(diagnostics::redefined(source_id, span, id.span));
+        }
+
+        curr_scope.functions.insert(id.symbol, id.span);
+
+        Ok(())
+    }
+
+    fn declare_variable(&mut self, id: &Identifier) -> Result<()> {
+        let curr_scope = self.curr_scope_mut();
+        if let Some(&span) = curr_scope.variables.get(&id.symbol) {
+            let source_id = self.interner.get(id.symbol);
+            return Err(diagnostics::redefined(source_id, span, id.span));
+        }
+
+        curr_scope.variables.insert(id.symbol, id.span);
+
+        Ok(())
+    }
+
+    fn lookup_variable(&self, id: &Identifier) -> Result<()> {
+        let variable = self
+            .scopes
+            .iter()
+            .rev()
+            .find(|scope| scope.variables.contains_key(&id.symbol));
+
+        println!("{:?} {:?} {:?}", self.scopes, id, variable);
+        if variable.is_some() {
+            return Ok(());
+        }
+
+        let source_id = self.interner.get(id.symbol);
+        Err(diagnostics::undefined(source_id, id.span))
+    }
+
     pub fn parse(mut self) -> Result<Program<'src>> {
         self.parse_program()
     }
 
     fn parse_program(&mut self) -> Result<Program<'src>> {
-        let span = self.start_span();
-        let func = self.parse_function_declaration()?;
+        self.scoped(|p| {
+            let span = p.start_span();
+            let func = p.parse_function_declaration()?;
 
-        let span = self.end_span(span);
-        let program = Program { span, func };
+            let span = p.end_span(span);
+            let program = Program { span, func };
 
-        Ok(program)
+            Ok(program)
+        })
     }
 
     fn parse_function_declaration(&mut self) -> Result<FunctionDeclaration<'src>> {
         let span = self.start_span();
-
         self.expect(TokenKind::Int)?;
+
         let name = self.parse_id()?;
+        self.declare_function(&name)?;
 
-        self.expect(TokenKind::LeftParen)?;
-        self.expect(TokenKind::Void)?;
-        self.expect(TokenKind::RightParen)?;
+        self.scoped(|p| {
+            p.expect(TokenKind::LeftParen)?;
+            p.expect(TokenKind::Void)?;
+            p.expect(TokenKind::RightParen)?;
 
-        let body = self.parse_block()?;
+            let body = p.parse_block_impl()?;
 
-        let span = self.end_span(span);
-        let decl = self.ast.decl_func(span, name, body);
+            let span = p.end_span(span);
+            let decl = p.ast.decl_func(span, name, body);
 
-        Ok(decl)
+            Ok(decl)
+        })
     }
 
     fn parse_block(&mut self) -> Result<Block<'src>> {
+        self.scoped(|p| p.parse_block_impl())
+    }
+
+    fn parse_block_impl(&mut self) -> Result<Block<'src>> {
         let mut items = self.ast.vec();
         let span = self.start_span();
 
@@ -274,6 +363,8 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.expect(TokenKind::Int)?;
 
         let id = self.parse_id()?;
+        self.declare_variable(&id)?;
+
         let expr = if self.eat(TokenKind::Eq) {
             let expr = self.parse_expr()?;
             Some(expr)
@@ -425,8 +516,9 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn parse_expr_id(&mut self) -> Result<Expression<'src>> {
         let id = self.parse_id()?;
-        let expr = self.ast.expr_id(id);
+        self.lookup_variable(&id)?;
 
+        let expr = self.ast.expr_id(id);
         Ok(expr)
     }
 

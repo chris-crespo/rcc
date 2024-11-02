@@ -27,3 +27,21 @@ impl<'a, T> DerefMut for Vec<'a, T> {
         &mut self.0
     }
 }
+
+impl<'a, T> IntoIterator for Vec<'a, T> {
+    type Item = T;
+    type IntoIter = <vec::Vec<T, &'a Bump> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a Vec<'a, T> {
+    type Item = &'a T;
+    type IntoIter = std::slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
