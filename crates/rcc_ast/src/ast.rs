@@ -29,7 +29,14 @@ pub enum BlockItem<'a> {
 
 #[derive(Debug)]
 pub enum Declaration<'a> {
+    Typedef(&'a TypedefDeclaration),
     Variable(&'a VariableDeclaration<'a>),
+}
+
+#[derive(Debug)]
+pub struct TypedefDeclaration {
+    pub span: Span,
+    pub id: Identifier
 }
 
 #[derive(Debug)]
