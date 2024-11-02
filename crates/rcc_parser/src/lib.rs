@@ -409,6 +409,8 @@ impl<'a, 'src> Parser<'a, 'src> {
         let id = self.parse_id()?;
         self.declare_typedef(&id);
 
+        self.expect(TokenKind::Semicolon)?;
+
         let span = self.end_span(span);
         let decl = self.ast.decl_typedef(span, ty, id);
 
