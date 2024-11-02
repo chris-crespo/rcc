@@ -1,6 +1,5 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use miette::diagnostic;
 use rcc_arena::Arena;
 use rcc_ast::{
     AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression, FunctionDeclaration,
@@ -104,6 +103,7 @@ impl From<TokenKind> for Precedence {
 #[derive(Debug, Default)]
 struct Scope {
     functions: HashMap<Symbol, Span>,
+    typedefs: HashMap<Symbol, Span>,
     variables: HashMap<Symbol, Span>,
 }
 
@@ -248,6 +248,10 @@ impl<'a, 'src> Parser<'a, 'src> {
         Ok(())
     }
 
+    fn declare_typedef(&mut self, id: &Identifier) {
+        self.curr_scope_mut().typedefs.insert(id.symbol, id.span);
+    }
+
     fn declare_variable(&mut self, id: &Identifier) -> Result<()> {
         let curr_scope = self.curr_scope_mut();
         if let Some(&span) = curr_scope.variables.get(&id.symbol) {
@@ -267,7 +271,6 @@ impl<'a, 'src> Parser<'a, 'src> {
             .rev()
             .find(|scope| scope.variables.contains_key(&id.symbol));
 
-        println!("{:?} {:?} {:?}", self.scopes, id, variable);
         if variable.is_some() {
             return Ok(());
         }
@@ -337,7 +340,7 @@ impl<'a, 'src> Parser<'a, 'src> {
     fn parse_block_item(&mut self) -> Result<BlockItem<'src>> {
         let kind = self.curr_kind();
         match kind {
-            TokenKind::Int => self.parse_block_item_decl(),
+            TokenKind::Typedef | TokenKind::Int => self.parse_block_item_decl(),
             _ => self.parse_block_item_stmt(),
         }
     }
@@ -355,7 +358,24 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_decl(&mut self) -> Result<Declaration<'src>> {
-        self.parse_decl_var()
+        match self.curr_kind() {
+            TokenKind::Typedef => self.parse_decl_typedef(),
+            _ => self.parse_decl_var(),
+        }
+    }
+
+    fn parse_decl_typedef(&mut self) -> Result<Declaration<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `typedef`
+        self.expect(TokenKind::Int)?;
+
+        let id = self.parse_id()?;
+        self.declare_typedef(&id);
+
+        let span = self.end_span(span);
+        let decl = self.ast.decl_typedef(span, id);
+
+        Ok(decl)
     }
 
     fn parse_decl_var(&mut self) -> Result<Declaration<'src>> {

@@ -2,7 +2,9 @@ use rcc_arena::Arena;
 use rcc_span::Span;
 
 use crate::{
-    BinaryExpression, BinaryOperator, Block, BlockItem, Declaration, EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement, Statement, UnaryExpression, UnaryOperator, VariableDeclaration
+    BinaryExpression, BinaryOperator, Block, BlockItem, Declaration, EmptyStatement, Expression,
+    ExpressionStatement, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement,
+    Statement, TypedefDeclaration, UnaryExpression, UnaryOperator, VariableDeclaration,
 };
 
 pub struct AstBuilder<'a> {
@@ -48,6 +50,15 @@ impl<'a> AstBuilder<'a> {
         BlockItem::Statement(self.alloc(stmt))
     }
 
+    pub fn decl_typedef(&self, span: Span, id: Identifier) -> Declaration<'a> {
+        let typedef_decl = self.typedef_decl(span, id);
+        Declaration::Typedef(self.alloc(typedef_decl))
+    }
+
+    pub fn typedef_decl(&self, span: Span, id: Identifier) -> TypedefDeclaration {
+        TypedefDeclaration { span, id }
+    }
+
     pub fn decl_var(
         &self,
         span: Span,
@@ -85,7 +96,7 @@ impl<'a> AstBuilder<'a> {
         ReturnStatement { span, expr }
     }
 
-    pub fn stmt_expr(&self, span: Span ,expr: Expression<'a>) -> Statement<'a> {
+    pub fn stmt_expr(&self, span: Span, expr: Expression<'a>) -> Statement<'a> {
         let expr_stmt = self.expr_stmt(span, expr);
         Statement::Expression(self.alloc(expr_stmt))
     }
