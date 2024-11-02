@@ -50,6 +50,7 @@ fn lower_decl_func(
     func: &ast::FunctionDeclaration,
 ) -> tac::FunctionDeclaration {
     lower_block(ctx, &func.body);
+    ctx.instrs.ret_zero();
 
     let name = map_ast_id(&func.name);
     let body = ctx.instrs.take();
@@ -57,16 +58,46 @@ fn lower_decl_func(
     tac::FunctionDeclaration { name, body }
 }
 
-fn lower_block(ctx: &mut LoweringContext, block: &ast::Block)  {
-    todo!()
+fn lower_block(ctx: &mut LoweringContext, block: &ast::Block) {
+    for item in &block.items {
+        lower_block_item(ctx, item)
+    }
+}
+
+fn lower_block_item(ctx: &mut LoweringContext, block_item: &ast::BlockItem) {
+    match block_item {
+        ast::BlockItem::Declaration(decl) => lower_decl(ctx, decl),
+        ast::BlockItem::Statement(stmt) => lower_stmt(ctx, stmt),
+    }
+}
+
+fn lower_decl(ctx: &mut LoweringContext, decl: &ast::Declaration) {
+    match decl {
+        ast::Declaration::Typedef(_) => {}
+        ast::Declaration::Variable(decl) => lower_var_decl(ctx, decl),
+    }
+}
+
+fn lower_var_decl(ctx: &mut LoweringContext, decl: &ast::VariableDeclaration) {
+    let Some(expr) = &decl.expr else {
+        return;
+    };
+
+    let var = map_var(&decl.id);
+    let value = lower_expr(ctx, expr);
+    ctx.instrs.copy(value, var);
 }
 
 fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
     match stmt {
-        ast::Statement::Expression(_) => todo!(),
+        ast::Statement::Expression(expr) => lower_expr_stmt(ctx, expr),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
-        ast::Statement::Empty(_) => todo!(),
+        ast::Statement::Empty(_) => {},
     }
+}
+
+fn lower_expr_stmt(ctx: &mut LoweringContext, stmt: &ast::ExpressionStatement) {
+    lower_expr(ctx, &stmt.expr);
 }
 
 fn lower_return_stmt(ctx: &mut LoweringContext, stmt: &ast::ReturnStatement) {
@@ -77,7 +108,7 @@ fn lower_return_stmt(ctx: &mut LoweringContext, stmt: &ast::ReturnStatement) {
 fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
     match expr {
         ast::Expression::NumberLiteral(lit) => map_number_literal(lit),
-        ast::Expression::Identifier(_) => todo!(),
+        ast::Expression::Identifier(id) => map_id_expr(id),
         ast::Expression::Assignment(_) => todo!(),
         ast::Expression::Binary(expr) if expr.op == ast::BinaryOperator::And => {
             lower_and_expr(ctx, expr)
@@ -162,7 +193,7 @@ fn lower_unary_expr(ctx: &mut LoweringContext, expr: &ast::UnaryExpression) -> t
     let src = lower_expr(ctx, &expr.expr);
     let dest = ctx.temp_var();
 
-    ctx.instrs.unary(op, src,dest);
+    ctx.instrs.unary(op, src, dest);
 
     tac::Value::Variable(dest)
 }
@@ -200,6 +231,15 @@ fn map_ast_unary_op(op: ast::UnaryOperator) -> tac::UnaryOperator {
 fn map_number_literal(lit: &ast::NumberLiteral) -> tac::Value {
     let constant_value = tac::Constant { value: lit.value };
     tac::Value::Constant(constant_value)
+}
+
+fn map_id_expr(id: &ast::Identifier) -> tac::Value {
+    let var = map_var(id);
+    tac::Value::Variable(var)
+}
+
+fn map_var(id: &ast::Identifier) -> tac::Variable {
+    tac::Variable::Id(id.symbol)
 }
 
 fn map_ast_id(id: &ast::Identifier) -> tac::Identifier {

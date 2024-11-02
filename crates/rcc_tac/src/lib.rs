@@ -113,6 +113,7 @@ pub struct Constant {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Variable {
+    Id(Symbol),
     Temp(TempVar),
 }
 

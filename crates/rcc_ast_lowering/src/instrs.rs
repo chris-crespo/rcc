@@ -36,6 +36,12 @@ impl Instrs {
         self.0.push(instr)
     }
 
+    pub fn ret_zero(&mut self) {
+        let constant = tac::Constant{ value: 0};
+        let value = tac::Value::Constant(constant);
+        self.ret(value)
+    }
+
     pub fn jmp(&mut self, target: tac::Label) {
         let jmp_instr = tac::JumpInstruction { target };
         let instr_jmp = tac::Instruction::Jump(jmp_instr);
