@@ -22,6 +22,9 @@ struct Cli {
     #[clap(long, group = "option")]
     parse: bool,
 
+    #[clap(long, group = "option")]
+    validate: bool,
+
     #[clap(short = 'S', group = "option")]
     compile: bool,
 
@@ -37,7 +40,7 @@ fn main() {
 
     if args.lex {
         lex(&args.filename);
-    } else if args.parse {
+    } else if args.parse || args.validate {
         parse(&args.filename);
     } else if args.tacky {
         tacky(&args.filename)
