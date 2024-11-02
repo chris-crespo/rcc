@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use rcc_arena::Arena;
 use rcc_ast::{
     AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression, FunctionDeclaration,
-    Identifier, Program, Statement, UnaryOperator,
+    Identifier, Program, Statement, Type, UnaryOperator,
 };
 use rcc_interner::{Interner, Symbol};
-use rcc_lexer::{Lexer, Token, TokenKind};
+use rcc_lexer::{Lexer, LexerCheckpoint, Token, TokenKind};
 use rcc_span::Span;
 
 mod diagnostics;
@@ -98,6 +98,13 @@ impl From<TokenKind> for Precedence {
             _ => Precedence::None,
         }
     }
+}
+
+#[derive(Debug)]
+struct ParserCheckpoint<'a> {
+    lexer: LexerCheckpoint<'a>,
+    curr_token: Token,
+    prev_token_end: u32
 }
 
 #[derive(Debug, Default)]
@@ -197,6 +204,27 @@ impl<'a, 'src> Parser<'a, 'src> {
         Ok(())
     }
 
+    fn checkpoint(&self) -> ParserCheckpoint<'src> {
+        ParserCheckpoint {
+            lexer: self.lexer.checkpoint(),
+            curr_token: self.curr_token,
+            prev_token_end: self.prev_token_end,
+        }
+    }
+
+    fn rewind(&mut self, checkpoint: ParserCheckpoint<'src>) {
+        self.lexer.rewind(checkpoint.lexer);
+        self.curr_token = checkpoint.curr_token;
+        self.prev_token_end = checkpoint.prev_token_end;
+    }
+
+    fn lookahead<T>(&mut self, f: impl FnOnce(&mut Parser<'a, 'src>) -> T) -> T {
+        let checkpoint = self.checkpoint();
+        let result = f(self);
+        self.rewind(checkpoint);
+        result
+    }
+
     fn expected(&self, kind: TokenKind) -> miette::Report {
         diagnostics::expected(
             self.curr_token.span,
@@ -262,6 +290,21 @@ impl<'a, 'src> Parser<'a, 'src> {
         curr_scope.variables.insert(id.symbol, id.span);
 
         Ok(())
+    }
+
+    fn lookup_typedef(&self, id: &Identifier) -> Result<()> {
+        let variable = self
+            .scopes
+            .iter()
+            .rev()
+            .find(|scope| scope.typedefs.contains_key(&id.symbol));
+
+        if variable.is_some() {
+            return Ok(());
+        }
+
+        let source_id = self.interner.get(id.symbol);
+        Err(diagnostics::undefined(source_id, id.span))
     }
 
     fn lookup_variable(&self, id: &Identifier) -> Result<()> {
@@ -338,50 +381,43 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_block_item(&mut self) -> Result<BlockItem<'src>> {
-        let kind = self.curr_kind();
-        match kind {
-            TokenKind::Typedef | TokenKind::Int => self.parse_block_item_decl(),
-            _ => self.parse_block_item_stmt(),
+        if self.curr_kind() == TokenKind::Typedef {
+            let decl = self.parse_decl_typedef()?;
+            let block_item = self.ast.block_item_decl(decl);
+            return Ok(block_item);
         }
-    }
 
-    fn parse_block_item_decl(&mut self) -> Result<BlockItem<'src>> {
-        let decl = self.parse_decl()?;
-        let block_item_decl = self.ast.block_item_decl(decl);
-        Ok(block_item_decl)
-    }
-
-    fn parse_block_item_stmt(&mut self) -> Result<BlockItem<'src>> {
-        let stmt = self.parse_stmt()?;
-        let block_item_stmt = self.ast.block_item_stmt(stmt);
-        Ok(block_item_stmt)
-    }
-
-    fn parse_decl(&mut self) -> Result<Declaration<'src>> {
-        match self.curr_kind() {
-            TokenKind::Typedef => self.parse_decl_typedef(),
-            _ => self.parse_decl_var(),
+        match self.lookahead(|p| p.parse_ty()) {
+            Ok(_) => {
+                let decl = self.parse_decl_var()?;
+                let block_item = self.ast.block_item_decl(decl);
+                Ok(block_item)
+            }
+            Err(_) => {
+                let stmt = self.parse_stmt()?;
+                let block_item = self.ast.block_item_stmt(stmt);
+                Ok(block_item)
+            }
         }
     }
 
     fn parse_decl_typedef(&mut self) -> Result<Declaration<'src>> {
         let span = self.start_span();
         self.bump(); // Skip `typedef`
-        self.expect(TokenKind::Int)?;
 
+        let ty = self.parse_ty()?;
         let id = self.parse_id()?;
         self.declare_typedef(&id);
 
         let span = self.end_span(span);
-        let decl = self.ast.decl_typedef(span, id);
+        let decl = self.ast.decl_typedef(span, ty, id);
 
         Ok(decl)
     }
 
     fn parse_decl_var(&mut self) -> Result<Declaration<'src>> {
         let span = self.start_span();
-        self.expect(TokenKind::Int)?;
-
+        let ty = self.parse_ty()?;
         let id = self.parse_id()?;
         self.declare_variable(&id)?;
 
@@ -395,7 +431,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.expect(TokenKind::Semicolon)?;
 
         let span = self.end_span(span);
-        let decl = self.ast.decl_var(span, id, expr);
+        let decl = self.ast.decl_var(span, ty, id, expr);
 
         Ok(decl)
     }
@@ -540,6 +576,34 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let expr = self.ast.expr_id(id);
         Ok(expr)
+    }
+
+    fn parse_ty(&mut self) -> Result<Type<'src>> {
+        match self.curr_kind() {
+            TokenKind::Int => self.parse_ty_int(),
+            _ => self.parse_ty_alias(),
+        }
+    }
+
+    fn parse_ty_int(&mut self) -> Result<Type<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `int`
+
+        let span = self.end_span(span);
+        let ty = self.ast.ty_int(span);
+
+        Ok(ty)
+    }
+
+    fn parse_ty_alias(&mut self) -> Result<Type<'src>> {
+        let span = self.start_span();
+        let id = self.parse_id()?;
+        self.lookup_typedef(&id)?;
+
+        let span = self.end_span(span);
+        let ty = self.ast.ty_alias(span, id);
+
+        Ok(ty)
     }
 
     fn parse_id(&mut self) -> Result<Identifier> {

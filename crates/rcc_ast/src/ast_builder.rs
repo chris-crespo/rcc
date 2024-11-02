@@ -2,9 +2,7 @@ use rcc_arena::Arena;
 use rcc_span::Span;
 
 use crate::{
-    BinaryExpression, BinaryOperator, Block, BlockItem, Declaration, EmptyStatement, Expression,
-    ExpressionStatement, FunctionDeclaration, Identifier, NumberLiteral, Program, ReturnStatement,
-    Statement, TypedefDeclaration, UnaryExpression, UnaryOperator, VariableDeclaration,
+    AliasType, BinaryExpression, BinaryOperator, Block, BlockItem, Declaration, EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, Identifier, IntType, NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression, UnaryOperator, VariableDeclaration
 };
 
 pub struct AstBuilder<'a> {
@@ -50,32 +48,34 @@ impl<'a> AstBuilder<'a> {
         BlockItem::Statement(self.alloc(stmt))
     }
 
-    pub fn decl_typedef(&self, span: Span, id: Identifier) -> Declaration<'a> {
-        let typedef_decl = self.typedef_decl(span, id);
+    pub fn decl_typedef(&self, span: Span, ty: Type<'a>, id: Identifier) -> Declaration<'a> {
+        let typedef_decl = self.typedef_decl(span, ty, id);
         Declaration::Typedef(self.alloc(typedef_decl))
     }
 
-    pub fn typedef_decl(&self, span: Span, id: Identifier) -> TypedefDeclaration {
-        TypedefDeclaration { span, id }
+    pub fn typedef_decl(&self, span: Span, ty: Type<'a>, id: Identifier) -> TypedefDeclaration<'a> {
+        TypedefDeclaration { span, ty, id }
     }
 
     pub fn decl_var(
         &self,
         span: Span,
+        ty: Type<'a>,
         id: Identifier,
         expr: Option<Expression<'a>>,
     ) -> Declaration<'a> {
-        let decl_var = self.var_decl(span, id, expr);
+        let decl_var = self.var_decl(span, ty, id, expr);
         Declaration::Variable(self.alloc(decl_var))
     }
 
     pub fn var_decl(
         &self,
         span: Span,
+        ty: Type<'a>,
         id: Identifier,
         expr: Option<Expression<'a>>,
     ) -> VariableDeclaration<'a> {
-        VariableDeclaration { span, id, expr }
+        VariableDeclaration { span, ty, id, expr }
     }
 
     pub fn stmt_empty(&self, span: Span) -> Statement<'a> {
@@ -156,5 +156,23 @@ impl<'a> AstBuilder<'a> {
 
     pub fn expr_id(&self, id: Identifier) -> Expression<'a> {
         Expression::Identifier(self.alloc(id))
+    }
+
+    pub fn ty_int(&self, span: Span) -> Type<'a> {
+        let int_ty = self.int_ty(span);
+        Type::Int(self.alloc(int_ty))
+    }
+
+    pub fn int_ty(&self, span: Span) -> IntType {
+        IntType { span }
+    }
+
+    pub fn ty_alias(&self, span: Span, id: Identifier) -> Type<'a> {
+        let alias_ty = self.alias_ty(span, id);
+        Type::Alias(self.alloc(alias_ty))
+    }
+
+    pub fn alias_ty(&self, span: Span, id: Identifier) -> AliasType {
+        AliasType { span, id }
     }
 }

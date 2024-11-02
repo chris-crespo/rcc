@@ -29,19 +29,21 @@ pub enum BlockItem<'a> {
 
 #[derive(Debug)]
 pub enum Declaration<'a> {
-    Typedef(&'a TypedefDeclaration),
+    Typedef(&'a TypedefDeclaration<'a>),
     Variable(&'a VariableDeclaration<'a>),
 }
 
 #[derive(Debug)]
-pub struct TypedefDeclaration {
+pub struct TypedefDeclaration<'a> {
     pub span: Span,
+    pub ty: Type<'a>,
     pub id: Identifier
 }
 
 #[derive(Debug)]
 pub struct VariableDeclaration<'a> {
     pub span: Span,
+    pub ty: Type<'a>,
     pub id: Identifier,
     pub expr: Option<Expression<'a>>,
 }
@@ -141,6 +143,23 @@ pub enum UnaryOperator {
 pub struct NumberLiteral {
     pub span: Span,
     pub value: u64,
+}
+
+#[derive(Debug)]
+pub enum Type<'a> {
+    Int(&'a IntType),
+    Alias(&'a AliasType)
+}
+
+#[derive(Debug)]
+pub struct IntType {
+    pub span: Span
+}
+
+#[derive(Debug)]
+pub struct AliasType {
+    pub span: Span,
+    pub id: Identifier
 }
 
 #[derive(Debug)]

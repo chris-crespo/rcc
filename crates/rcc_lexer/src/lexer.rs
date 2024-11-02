@@ -4,6 +4,12 @@ use rcc_span::Span;
 
 use crate::{Token, TokenKind};
 
+#[derive(Debug)]
+pub struct LexerCheckpoint<'src> {
+    chars: Chars<'src>,
+    start: u32,
+}
+
 pub struct Lexer<'src> {
     source: &'src str,
     chars: Chars<'src>,
@@ -17,6 +23,18 @@ impl<'src> Lexer<'src> {
             chars: source.chars(),
             start: 0,
         }
+    }
+
+    pub fn checkpoint(&self) -> LexerCheckpoint<'src> {
+        LexerCheckpoint {
+            chars: self.chars.clone(),
+            start: self.start,
+        }
+    }
+
+    pub fn rewind(&mut self, checkpoint: LexerCheckpoint<'src>) {
+        self.chars = checkpoint.chars;
+        self.start = checkpoint.start;
     }
 
     fn peek_char(&self) -> Option<char> {
