@@ -92,4 +92,32 @@ impl TokenKind {
             TokenKind::Number => "number",
         }
     }
+
+    pub fn is_assignment_op(self) -> bool {
+        matches!(self, TokenKind::Eq)
+    }
+
+    pub fn is_binary_op(self) -> bool {
+        matches!(
+            self,
+            TokenKind::Plus
+                | TokenKind::Minus
+                | TokenKind::Star
+                | TokenKind::Slash
+                | TokenKind::Percent
+                | TokenKind::Amp
+                | TokenKind::Amp2
+                | TokenKind::BangEq
+                | TokenKind::Pipe
+                | TokenKind::Pipe2
+                | TokenKind::Caret
+                | TokenKind::Eq2
+                | TokenKind::Lt
+                | TokenKind::Lt2
+                | TokenKind::LtEq
+                | TokenKind::Gt
+                | TokenKind::Gt2
+                | TokenKind::GtEq
+        )
+    }
 }

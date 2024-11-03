@@ -162,7 +162,7 @@ pub struct AliasType {
     pub id: Identifier
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Identifier {
     pub span: Span,
     pub symbol: Symbol,

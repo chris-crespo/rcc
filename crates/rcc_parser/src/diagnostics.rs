@@ -25,3 +25,9 @@ pub fn undefined(id: &str, span: Span) -> miette::Report {
         .with_label(span)
         .into()
 }
+
+pub fn invalid_lvalue(span: Span) -> miette::Report {
+    MietteDiagnostic::new(format!("Invalid lvalue"))
+        .with_label(span)
+        .into()
+}

@@ -2,7 +2,7 @@ use rcc_arena::Arena;
 use rcc_span::Span;
 
 use crate::{
-    AliasType, BinaryExpression, BinaryOperator, Block, BlockItem, Declaration, EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, Identifier, IntType, NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression, UnaryOperator, VariableDeclaration
+    AliasType, AssignmentExpression, BinaryExpression, BinaryOperator, Block, BlockItem, Declaration, EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, Identifier, IntType, Lvalue, NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression, UnaryOperator, VariableDeclaration
 };
 
 pub struct AstBuilder<'a> {
@@ -103,6 +103,15 @@ impl<'a> AstBuilder<'a> {
 
     pub fn expr_stmt(&self, span: Span, expr: Expression<'a>) -> ExpressionStatement<'a> {
         ExpressionStatement { span, expr }
+    }
+
+    pub fn expr_assignment(&self, span: Span, lvalue: Lvalue, expr: Expression<'a>) -> Expression<'a> {
+        let assignment_expr = self.assignment_expr(span, lvalue, expr);
+        Expression::Assignment(self.alloc(assignment_expr))
+    }
+
+    pub fn assignment_expr(&self, span: Span, lvalue: Lvalue, expr: Expression<'a>) -> AssignmentExpression<'a> {
+        AssignmentExpression { span, lvalue, expr }
     }
 
     pub fn expr_binary(

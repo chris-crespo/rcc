@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rcc_arena::Arena;
 use rcc_ast::{
     AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression, FunctionDeclaration,
-    Identifier, Program, Statement, Type, UnaryOperator,
+    Identifier, Lvalue, Program, Statement, Type, UnaryOperator,
 };
 use rcc_interner::{Interner, Symbol};
 use rcc_lexer::{Lexer, LexerCheckpoint, Token, TokenKind};
@@ -42,6 +42,13 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
         TokenKind::Gt2 => BinaryOperator::RightShift,
         TokenKind::GtEq => BinaryOperator::GreaterThanEqual,
         _ => unreachable!("Binary operator: {kind:?}"),
+    }
+}
+
+fn map_lvalue(expr: &Expression) -> Option<Lvalue> {
+    match expr {
+        Expression::Identifier(&id) => Some(Lvalue::Identifier(id)),
+        _ => None,
     }
 }
 
@@ -104,7 +111,7 @@ impl From<TokenKind> for Precedence {
 struct ParserCheckpoint<'a> {
     lexer: LexerCheckpoint<'a>,
     curr_token: Token,
-    prev_token_end: u32
+    prev_token_end: u32,
 }
 
 #[derive(Debug, Default)]
@@ -508,21 +515,31 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_expr_infix(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
+        match self.curr_kind() {
+            kind if kind.is_assignment_op() => self.parse_expr_assignment(lhs),
+            kind if kind.is_binary_op() => self.parse_expr_binary(lhs),
+            _ => Err(self.unexpected()),
+        }
+    }
+
+    fn parse_expr_assignment(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `=`
+
+        let lvalue = map_lvalue(&lhs).ok_or_else(|| diagnostics::invalid_lvalue(lhs.span()))?;
+        let expr = self.parse_expr()?;
+
+        Ok(self.ast.expr_assignment(span, lvalue, expr))
+    }
+
+    fn parse_expr_binary(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
         let span = self.start_span();
         let kind = self.curr_kind();
 
         self.bump(); // Skip operator.
 
         let op = map_binary_operator(kind);
-        let precedence = {
-            let precedence = Precedence::from(kind);
-            if op.right_assoc() {
-                precedence.prev()
-            } else {
-                precedence
-            }
-        };
-
+        let precedence = Precedence::from(kind);
         let rhs = self.parse_expr_(precedence)?;
 
         let span = self.end_span(span);
