@@ -287,7 +287,7 @@ fn codegen_not_instr(ctx: &mut CodegenContext, instr: &tac::UnaryInstruction) {
 fn codegen_copy_instr(ctx: &mut CodegenContext, instr: &tac::CopyInstruction) {
     let src = codegen_value(ctx, &instr.src);
     let dest = codegen_variable(ctx, &instr.dest);
-    ctx.instrs.mov(src, dest);
+    ctx.instrs.mov_fixup(src, dest);
 }
 
 fn codegen_jmp_instr(ctx: &mut CodegenContext, instr: &tac::JumpInstruction) {
