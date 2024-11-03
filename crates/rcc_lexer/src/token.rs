@@ -132,6 +132,7 @@ impl TokenKind {
         }
     }
 
+    #[inline(always)]
     pub fn is_assignment_op(self) -> bool {
         matches!(self, assignment_tokens!())
     }
