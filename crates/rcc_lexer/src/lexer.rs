@@ -95,7 +95,13 @@ impl<'src> Lexer<'src> {
                 '(' => self.make_token(TokenKind::LeftParen),
                 ')' => self.make_token(TokenKind::RightParen),
                 ';' => self.make_token(TokenKind::Semicolon),
-                '+' => self.make_token(TokenKind::Plus),
+                '+' => {
+                    if self.eat_char('+') {
+                        self.make_token(TokenKind::Plus2)
+                    } else {
+                        self.make_token(TokenKind::Plus)
+                    }
+                }
                 '-' => {
                     if self.eat_char('-') {
                         self.make_token(TokenKind::Minus2)

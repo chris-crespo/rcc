@@ -20,6 +20,7 @@ pub enum TokenKind {
     Semicolon,
 
     Plus,
+    Plus2,
     Minus,
     Minus2,
     Star,
@@ -63,6 +64,7 @@ impl TokenKind {
             TokenKind::RightParen => ")",
             TokenKind::Semicolon => ";",
             TokenKind::Plus => "+",
+            TokenKind::Plus2 => "++",
             TokenKind::Minus => "-",
             TokenKind::Minus2 => "--",
             TokenKind::Star => "*",

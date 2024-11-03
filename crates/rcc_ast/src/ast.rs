@@ -80,6 +80,7 @@ pub enum Expression<'a> {
     Assignment(&'a AssignmentExpression<'a>),
     Binary(&'a BinaryExpression<'a>),
     Unary(&'a UnaryExpression<'a>),
+    Update(&'a UpdateExpression),
 }
 
 #[derive(Debug)]
@@ -136,6 +137,20 @@ pub enum UnaryOperator {
     Negation,
     Not,
     BitwiseComplement,
+}
+
+#[derive(Debug)]
+pub struct UpdateExpression {
+    pub span: Span,
+    pub op: UpdateOperator,
+    pub postfix: bool,
+    pub lvalue: Lvalue
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum UpdateOperator {
+    Inc,
+    Dec
 }
 
 #[derive(Debug)]
