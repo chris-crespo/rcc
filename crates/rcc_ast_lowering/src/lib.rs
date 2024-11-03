@@ -118,6 +118,7 @@ fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
         }
         ast::Expression::Binary(expr) => lower_binary_expr(ctx, expr),
         ast::Expression::Unary(expr) => lower_unary_expr(ctx, expr),
+        ast::Expression::Update(expr) => todo!()
     }
 }
 

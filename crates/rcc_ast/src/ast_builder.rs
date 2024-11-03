@@ -2,7 +2,10 @@ use rcc_arena::Arena;
 use rcc_span::Span;
 
 use crate::{
-    AliasType, AssignmentExpression, BinaryExpression, BinaryOperator, Block, BlockItem, Declaration, EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, Identifier, IntType, Lvalue, NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression, UnaryOperator, VariableDeclaration
+    AliasType, AssignmentExpression, BinaryExpression, BinaryOperator, Block, BlockItem,
+    Declaration, EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, Identifier,
+    IntType, Lvalue, NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration,
+    UnaryExpression, UnaryOperator, UpdateExpression, UpdateOperator, VariableDeclaration,
 };
 
 pub struct AstBuilder<'a> {
@@ -105,12 +108,22 @@ impl<'a> AstBuilder<'a> {
         ExpressionStatement { span, expr }
     }
 
-    pub fn expr_assignment(&self, span: Span, lvalue: Lvalue, expr: Expression<'a>) -> Expression<'a> {
+    pub fn expr_assignment(
+        &self,
+        span: Span,
+        lvalue: Lvalue,
+        expr: Expression<'a>,
+    ) -> Expression<'a> {
         let assignment_expr = self.assignment_expr(span, lvalue, expr);
         Expression::Assignment(self.alloc(assignment_expr))
     }
 
-    pub fn assignment_expr(&self, span: Span, lvalue: Lvalue, expr: Expression<'a>) -> AssignmentExpression<'a> {
+    pub fn assignment_expr(
+        &self,
+        span: Span,
+        lvalue: Lvalue,
+        expr: Expression<'a>,
+    ) -> AssignmentExpression<'a> {
         AssignmentExpression { span, lvalue, expr }
     }
 
@@ -152,6 +165,27 @@ impl<'a> AstBuilder<'a> {
         expr: Expression<'a>,
     ) -> UnaryExpression<'a> {
         UnaryExpression { span, op, expr }
+    }
+
+    pub fn expr_update(
+        &self,
+        span: Span,
+        op: UpdateOperator,
+        postfix: bool,
+        lvalue: Lvalue,
+    ) -> Expression<'a> {
+        let update_expr = self.update_expr(span, op, postfix, lvalue);
+        Expression::Update(self.alloc(update_expr))
+    }
+
+    pub fn update_expr(
+        &self,
+        span: Span,
+        op: UpdateOperator,
+        postfix: bool,
+        lvalue: Lvalue,
+    ) -> UpdateExpression {
+        UpdateExpression { span, op, postfix, lvalue }
     }
 
     pub fn expr_number_lit(&self, span: Span, value: u64) -> Expression<'a> {
