@@ -118,7 +118,8 @@ fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
         }
         ast::Expression::Binary(expr) => lower_binary_expr(ctx, expr),
         ast::Expression::Unary(expr) => lower_unary_expr(ctx, expr),
-        ast::Expression::Update(expr) => todo!()
+        ast::Expression::Update(expr) if expr.postfix => lower_update_expr_postfix(ctx, expr),
+        ast::Expression::Update(expr) => lower_update_expr_prefix(ctx, expr),
     }
 }
 
@@ -207,6 +208,38 @@ fn lower_unary_expr(ctx: &mut LoweringContext, expr: &ast::UnaryExpression) -> t
     tac::Value::Variable(dest)
 }
 
+// a++              ++a
+//
+// temp1 = a        a = a + 1 
+// a = a + 1        
+// temp1
+
+fn lower_update_expr_prefix(ctx: &mut LoweringContext, expr: &ast::UpdateExpression) -> tac::Value {
+    let var = map_lvalue(&expr.lvalue);
+
+    let op = map_ast_update_op(expr.op);
+    let lhs = tac::Value::Variable(var);
+    let rhs = tac::Value::Constant(tac::Constant{ value: 1});
+    ctx.instrs.binary(op, lhs, rhs, var);
+
+    tac::Value::Variable(var)
+}
+
+fn lower_update_expr_postfix(ctx: &mut LoweringContext, expr: &ast::UpdateExpression) -> tac::Value {
+    let temp1 = ctx.temp_var();
+    let var = map_lvalue(&expr.lvalue);
+
+    let src = tac::Value::Variable(var);
+    ctx.instrs.copy(src, temp1);
+
+    let op = map_ast_update_op(expr.op);
+    let lhs = tac::Value::Variable(var);
+    let rhs = tac::Value::Constant(tac::Constant{ value: 1});
+    ctx.instrs.binary(op, lhs, rhs, var);
+
+    tac::Value::Variable(temp1)
+}
+
 fn map_ast_binary_op(op: ast::BinaryOperator) -> tac::BinaryOperator {
     match op {
         ast::BinaryOperator::Add => tac::BinaryOperator::Add,
@@ -234,6 +267,13 @@ fn map_ast_unary_op(op: ast::UnaryOperator) -> tac::UnaryOperator {
         ast::UnaryOperator::Negation => tac::UnaryOperator::Negation,
         ast::UnaryOperator::Not => tac::UnaryOperator::Not,
         ast::UnaryOperator::BitwiseComplement => tac::UnaryOperator::BitwiseComplement,
+    }
+}
+
+fn map_ast_update_op(op: ast::UpdateOperator) -> tac::BinaryOperator {
+    match op {
+        rcc_ast::UpdateOperator::Inc => tac::BinaryOperator::Add,
+        rcc_ast::UpdateOperator::Dec => tac::BinaryOperator::Substract,
     }
 }
 
