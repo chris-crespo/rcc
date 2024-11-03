@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rcc_arena::Arena;
 use rcc_ast::{
     AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression, FunctionDeclaration,
-    Identifier, Lvalue, Program, Statement, Type, UnaryOperator,
+    Identifier, Lvalue, Program, Statement, Type, UnaryOperator, UpdateOperator,
 };
 use rcc_interner::{Interner, Symbol};
 use rcc_lexer::{Lexer, LexerCheckpoint, Token, TokenKind};
@@ -44,6 +44,14 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
     }
 }
 
+fn map_update_operator(kind: TokenKind) -> UpdateOperator {
+    match kind {
+        TokenKind::Plus2 => UpdateOperator::Inc,
+        TokenKind::Minus2 => UpdateOperator::Dec,
+        _ => unreachable!("Update operator: {kind:?}"),
+    }
+}
+
 fn map_lvalue(expr: &Expression) -> Option<Lvalue> {
     match expr {
         Expression::Identifier(&id) => Some(Lvalue::Identifier(id)),
@@ -65,6 +73,8 @@ enum Precedence {
     Shift,
     Term,
     Factor,
+    Prefix,
+    Postfix,
 }
 
 impl Precedence {
@@ -81,6 +91,8 @@ impl Precedence {
             Precedence::Shift => Precedence::Comparison,
             Precedence::Term => Precedence::Shift,
             Precedence::Factor => Precedence::Term,
+            Precedence::Prefix => Precedence::Factor,
+            Precedence::Postfix => Precedence::Prefix,
         }
     }
 }
@@ -101,6 +113,7 @@ impl From<TokenKind> for Precedence {
             TokenKind::Lt2 | TokenKind::Gt2 => Precedence::Shift,
             TokenKind::Plus | TokenKind::Minus => Precedence::Term,
             TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Precedence::Factor,
+            TokenKind::Plus2 | TokenKind::Minus2 => Precedence::Postfix,
             _ => Precedence::None,
         }
     }
@@ -506,6 +519,7 @@ impl<'a, 'src> Parser<'a, 'src> {
     fn parse_expr_lhs(&mut self) -> Result<Expression<'src>> {
         match self.curr_kind() {
             TokenKind::Bang | TokenKind::Minus | TokenKind::Tilde => self.parse_expr_unary(),
+            TokenKind::Plus2 | TokenKind::Minus2 => self.parse_expr_update_prefix(),
             TokenKind::LeftParen => self.parse_expr_group(),
             TokenKind::Number => self.parse_expr_number_lit(),
             TokenKind::Identifier => self.parse_expr_id(),
@@ -515,6 +529,7 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn parse_expr_infix(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
         match self.curr_kind() {
+            TokenKind::Plus2 | TokenKind::Minus2 => self.parse_expr_update_postfix(lhs),
             kind if kind.is_assignment_op() => self.parse_expr_assignment(lhs),
             kind if kind.is_binary_op() => self.parse_expr_binary(lhs),
             _ => Err(self.unexpected()),
@@ -553,10 +568,41 @@ impl<'a, 'src> Parser<'a, 'src> {
         self.bump(); // Skip operator.
 
         let op = map_unary_operator(kind);
-        let expr = self.parse_expr_lhs()?;
+        let expr = self.parse_expr_(Precedence::Prefix)?;
 
         let span = self.end_span(span);
         let expr = self.ast.expr_unary(span, op, expr);
+        Ok(expr)
+    }
+
+    fn parse_expr_update_prefix(&mut self) -> Result<Expression<'src>> {
+        let span = self.start_span();
+        let kind = self.curr_kind();
+
+        self.bump(); // Skip operator
+
+        let op = map_update_operator(kind);
+        let expr = self.parse_expr_(Precedence::Prefix)?;
+        let lvalue = map_lvalue(&expr).ok_or_else(|| diagnostics::invalid_lvalue(expr.span()))?;
+
+        let span = self.end_span(span);
+        let expr = self.ast.expr_update(span, op, false, lvalue);
+
+        Ok(expr)
+    }
+
+    fn parse_expr_update_postfix(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
+        let span = self.start_span();
+        let kind = self.curr_kind();
+
+        self.bump(); // Skip operator
+
+        let op = map_update_operator(kind);
+        let lvalue = map_lvalue(&lhs).ok_or_else(|| diagnostics::invalid_lvalue(lhs.span()))?;
+
+        let span = self.end_span(span);
+        let expr = self.ast.expr_update(span, op, true, lvalue);
+
         Ok(expr)
     }
 
