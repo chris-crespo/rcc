@@ -98,6 +98,8 @@ impl<'src> Lexer<'src> {
                 '+' => {
                     if self.eat_char('+') {
                         self.make_token(TokenKind::Plus2)
+                    } else if self.eat_char('=') {
+                        self.make_token(TokenKind::PlusEq)
                     } else {
                         self.make_token(TokenKind::Plus)
                     }
@@ -105,11 +107,19 @@ impl<'src> Lexer<'src> {
                 '-' => {
                     if self.eat_char('-') {
                         self.make_token(TokenKind::Minus2)
+                    } else if self.eat_char('=') {
+                        self.make_token(TokenKind::MinusEq)
                     } else {
                         self.make_token(TokenKind::Minus)
                     }
                 }
-                '*' => self.make_token(TokenKind::Star),
+                '*' => {
+                    if self.eat_char('=') {
+                        self.make_token(TokenKind::StarEq)
+                    } else {
+                        self.make_token(TokenKind::Star)
+                    }
+                }
                 '/' => match self.peek_char() {
                     Some('/') => {
                         self.next_char();
@@ -121,13 +131,22 @@ impl<'src> Lexer<'src> {
                         self.skip_multiline_comment();
                         continue;
                     }
+                    _ if self.eat_char('=') => self.make_token(TokenKind::SlashEq),
                     _ => self.make_token(TokenKind::Slash),
                 },
-                '%' => self.make_token(TokenKind::Percent),
+                '%' => {
+                    if self.eat_char('=') {
+                        self.make_token(TokenKind::PercentEq)
+                    } else {
+                        self.make_token(TokenKind::Percent)
+                    }
+                }
                 '~' => self.make_token(TokenKind::Tilde),
                 '&' => {
                     if self.eat_char('&') {
                         self.make_token(TokenKind::Amp2)
+                    } else if self.eat_char('=') {
+                        self.make_token(TokenKind::AmpEq)
                     } else {
                         self.make_token(TokenKind::Amp)
                     }
@@ -142,11 +161,19 @@ impl<'src> Lexer<'src> {
                 '|' => {
                     if self.eat_char('|') {
                         self.make_token(TokenKind::Pipe2)
+                    } else if self.eat_char('=') {
+                        self.make_token(TokenKind::PipeEq)
                     } else {
                         self.make_token(TokenKind::Pipe)
                     }
                 }
-                '^' => self.make_token(TokenKind::Caret),
+                '^' => {
+                    if self.eat_char('=') {
+                        self.make_token(TokenKind::CaretEq)
+                    } else {
+                        self.make_token(TokenKind::Caret)
+                    }
+                }
                 '=' => {
                     if self.eat_char('=') {
                         self.make_token(TokenKind::Eq2)
@@ -156,7 +183,11 @@ impl<'src> Lexer<'src> {
                 }
                 '<' => {
                     if self.eat_char('<') {
-                        self.make_token(TokenKind::Lt2)
+                        if self.eat_char('=') {
+                            self.make_token(TokenKind::Lt2Eq)
+                        } else {
+                            self.make_token(TokenKind::Lt2)
+                        }
                     } else if self.eat_char('=') {
                         self.make_token(TokenKind::LtEq)
                     } else {
@@ -165,7 +196,11 @@ impl<'src> Lexer<'src> {
                 }
                 '>' => {
                     if self.eat_char('>') {
-                        self.make_token(TokenKind::Gt2)
+                        if self.eat_char('=') {
+                            self.make_token(TokenKind::Gt2Eq)
+                        } else {
+                            self.make_token(TokenKind::Gt2)
+                        }
                     } else if self.eat_char('=') {
                         self.make_token(TokenKind::GtEq)
                     } else {
