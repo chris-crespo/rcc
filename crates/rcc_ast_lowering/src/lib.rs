@@ -1,5 +1,5 @@
 use instrs::Instrs;
-use rcc_ast as ast;
+use rcc_ast::{self as ast, Lvalue};
 use rcc_tac as tac;
 
 mod instrs;
@@ -109,7 +109,7 @@ fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
     match expr {
         ast::Expression::NumberLiteral(lit) => map_number_literal(lit),
         ast::Expression::Identifier(id) => map_id_expr(id),
-        ast::Expression::Assignment(_) => todo!(),
+        ast::Expression::Assignment(expr) => lower_assignment_expr(ctx, expr),
         ast::Expression::Binary(expr) if expr.op == ast::BinaryOperator::And => {
             lower_and_expr(ctx, expr)
         }
@@ -119,6 +119,14 @@ fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
         ast::Expression::Binary(expr) => lower_binary_expr(ctx, expr),
         ast::Expression::Unary(expr) => lower_unary_expr(ctx, expr),
     }
+}
+
+fn lower_assignment_expr(ctx: &mut LoweringContext, expr: &ast::AssignmentExpression) -> tac::Value {
+    let var = map_lvalue(&expr.lvalue);
+    let value = lower_expr(ctx, &expr.expr);
+    ctx.instrs.copy(value, var);
+
+    tac::Value::Variable(var)
 }
 
 fn lower_and_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) -> tac::Value {
@@ -236,6 +244,12 @@ fn map_number_literal(lit: &ast::NumberLiteral) -> tac::Value {
 fn map_id_expr(id: &ast::Identifier) -> tac::Value {
     let var = map_var(id);
     tac::Value::Variable(var)
+}
+
+fn map_lvalue(lvalue: &ast::Lvalue) -> tac::Variable {
+    match lvalue {
+        Lvalue::Identifier(id) => map_var(id),
+    }
 }
 
 fn map_var(id: &ast::Identifier) -> tac::Variable {
