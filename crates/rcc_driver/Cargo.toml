@@ -3,6 +3,10 @@ name = "rcc_driver"
 version.workspace = true
 edition.workspace = true
 
+[[bin]]
+name = "rcc"
+path = "src/main.rs"
+
 [dependencies]
 rcc_arena        = { workspace = true }
 rcc_ast_lowering = { workspace = true }
