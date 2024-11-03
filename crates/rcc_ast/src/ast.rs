@@ -86,8 +86,24 @@ pub enum Expression<'a> {
 #[derive(Debug)]
 pub struct AssignmentExpression<'a> {
     pub span: Span,
+    pub op: AssignmentOperator,
     pub lvalue: Lvalue,
     pub expr: Expression<'a>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum AssignmentOperator {
+    Assign,
+    Add,
+    Substract,
+    Multiply,
+    Divide,
+    Remainded,
+    BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    LeftShift,
+    RightShift
 }
 
 #[derive(Debug)]

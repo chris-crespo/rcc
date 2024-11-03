@@ -63,6 +63,23 @@ pub enum TokenKind {
     Number,
 }
 
+#[macro_export]
+macro_rules! assignment_tokens {
+    () => {
+        TokenKind::Eq
+            | TokenKind::PlusEq
+            | TokenKind::MinusEq
+            | TokenKind::StarEq
+            | TokenKind::SlashEq
+            | TokenKind::PercentEq
+            | TokenKind::AmpEq
+            | TokenKind::PipeEq
+            | TokenKind::CaretEq
+            | TokenKind::Lt2Eq
+            | TokenKind::Gt2Eq
+    };
+}
+
 impl TokenKind {
     pub fn as_str(self) -> &'static str {
         match self {
@@ -116,7 +133,7 @@ impl TokenKind {
     }
 
     pub fn is_assignment_op(self) -> bool {
-        matches!(self, TokenKind::Eq)
+        matches!(self, assignment_tokens!())
     }
 
     pub fn is_binary_op(self) -> bool {

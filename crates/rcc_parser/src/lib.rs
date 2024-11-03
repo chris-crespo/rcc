@@ -2,21 +2,28 @@ use std::collections::HashMap;
 
 use rcc_arena::Arena;
 use rcc_ast::{
-    AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression, FunctionDeclaration,
-    Identifier, Lvalue, Program, Statement, Type, UnaryOperator, UpdateOperator,
+    AssignmentOperator, AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression, FunctionDeclaration, Identifier, Lvalue, Program, Statement, Type, UnaryOperator, UpdateOperator
 };
 use rcc_interner::{Interner, Symbol};
-use rcc_lexer::{Lexer, LexerCheckpoint, Token, TokenKind};
+use rcc_lexer::{assignment_tokens, Lexer, LexerCheckpoint, Token, TokenKind};
 use rcc_span::Span;
 
 mod diagnostics;
 
-fn map_unary_operator(kind: TokenKind) -> UnaryOperator {
+fn map_assignment_operator(kind: TokenKind) -> AssignmentOperator {
     match kind {
-        TokenKind::Bang => UnaryOperator::Not,
-        TokenKind::Minus => UnaryOperator::Negation,
-        TokenKind::Tilde => UnaryOperator::BitwiseComplement,
-        _ => unreachable!("Unary operator: {kind:?}"),
+        TokenKind::Eq => AssignmentOperator::Assign,
+        TokenKind::PlusEq => AssignmentOperator::Add,
+        TokenKind::MinusEq => AssignmentOperator::Substract,
+        TokenKind::StarEq => AssignmentOperator::Multiply,
+        TokenKind::SlashEq => AssignmentOperator::Divide,
+        TokenKind::PercentEq => AssignmentOperator::Remainded,
+        TokenKind::AmpEq => AssignmentOperator::BitwiseAnd,
+        TokenKind::PipeEq => AssignmentOperator::BitwiseOr,
+        TokenKind::CaretEq => AssignmentOperator::BitwiseXor,
+        TokenKind::Lt2Eq => AssignmentOperator::LeftShift,
+        TokenKind::Gt2Eq => AssignmentOperator::RightShift,
+        _ => unreachable!("Assignment operator: {kind:?}")
     }
 }
 
@@ -41,6 +48,15 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
         TokenKind::Gt2 => BinaryOperator::RightShift,
         TokenKind::GtEq => BinaryOperator::GreaterThanEqual,
         _ => unreachable!("Binary operator: {kind:?}"),
+    }
+}
+
+fn map_unary_operator(kind: TokenKind) -> UnaryOperator {
+    match kind {
+        TokenKind::Bang => UnaryOperator::Not,
+        TokenKind::Minus => UnaryOperator::Negation,
+        TokenKind::Tilde => UnaryOperator::BitwiseComplement,
+        _ => unreachable!("Unary operator: {kind:?}"),
     }
 }
 
@@ -100,7 +116,7 @@ impl Precedence {
 impl From<TokenKind> for Precedence {
     fn from(value: TokenKind) -> Self {
         match value {
-            TokenKind::Eq => Precedence::Assignment,
+            assignment_tokens!() => Precedence::Assignment,
             TokenKind::Pipe2 => Precedence::LogicalOr,
             TokenKind::Amp2 => Precedence::LogicalAnd,
             TokenKind::Pipe => Precedence::BitwiseOr,
@@ -538,12 +554,15 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn parse_expr_assignment(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
         let span = self.start_span();
-        self.bump(); // Skip `=`
+        let kind = self.curr_kind();
 
+        self.bump(); // Skip operator
+
+        let op = map_assignment_operator(kind);
         let lvalue = map_lvalue(&lhs).ok_or_else(|| diagnostics::invalid_lvalue(lhs.span()))?;
         let expr = self.parse_expr()?;
 
-        Ok(self.ast.expr_assignment(span, lvalue, expr))
+        Ok(self.ast.expr_assignment(span, op, lvalue, expr))
     }
 
     fn parse_expr_binary(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
