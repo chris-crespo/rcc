@@ -98,7 +98,7 @@ pub enum AssignmentOperator {
     Substract,
     Multiply,
     Divide,
-    Remainded,
+    Remainder,
     BitwiseAnd,
     BitwiseOr,
     BitwiseXor,

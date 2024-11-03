@@ -92,7 +92,7 @@ fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
     match stmt {
         ast::Statement::Expression(expr) => lower_expr_stmt(ctx, expr),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
-        ast::Statement::Empty(_) => {},
+        ast::Statement::Empty(_) => {}
     }
 }
 
@@ -123,10 +123,37 @@ fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
     }
 }
 
-fn lower_assignment_expr(ctx: &mut LoweringContext, expr: &ast::AssignmentExpression) -> tac::Value {
+fn lower_assignment_expr(
+    ctx: &mut LoweringContext,
+    expr: &ast::AssignmentExpression,
+) -> tac::Value {
+    match expr.op {
+        ast::AssignmentOperator::Assign => lower_assignment_expr_simple(ctx, expr),
+        _ => lower_assignment_expr_compound(ctx, expr)
+    }
+}
+
+fn lower_assignment_expr_simple(
+    ctx: &mut LoweringContext,
+    expr: &ast::AssignmentExpression,
+) -> tac::Value {
     let var = map_lvalue(&expr.lvalue);
     let value = lower_expr(ctx, &expr.expr);
     ctx.instrs.copy(value, var);
+
+    tac::Value::Variable(var)
+}
+
+fn lower_assignment_expr_compound(
+    ctx: &mut LoweringContext,
+    expr: &ast::AssignmentExpression,
+) -> tac::Value {
+    let op = map_ast_compount_assignemnt_op(expr.op);
+    let var = map_lvalue(&expr.lvalue);
+    let lhs = tac::Value::Variable(var);
+    let rhs = lower_expr(ctx, &expr.expr);
+
+    ctx.instrs.binary(op, lhs, rhs, var);
 
     tac::Value::Variable(var)
 }
@@ -210,8 +237,8 @@ fn lower_unary_expr(ctx: &mut LoweringContext, expr: &ast::UnaryExpression) -> t
 
 // a++              ++a
 //
-// temp1 = a        a = a + 1 
-// a = a + 1        
+// temp1 = a        a = a + 1
+// a = a + 1
 // temp1
 
 fn lower_update_expr_prefix(ctx: &mut LoweringContext, expr: &ast::UpdateExpression) -> tac::Value {
@@ -219,13 +246,16 @@ fn lower_update_expr_prefix(ctx: &mut LoweringContext, expr: &ast::UpdateExpress
 
     let op = map_ast_update_op(expr.op);
     let lhs = tac::Value::Variable(var);
-    let rhs = tac::Value::Constant(tac::Constant{ value: 1});
+    let rhs = tac::Value::Constant(tac::Constant { value: 1 });
     ctx.instrs.binary(op, lhs, rhs, var);
 
     tac::Value::Variable(var)
 }
 
-fn lower_update_expr_postfix(ctx: &mut LoweringContext, expr: &ast::UpdateExpression) -> tac::Value {
+fn lower_update_expr_postfix(
+    ctx: &mut LoweringContext,
+    expr: &ast::UpdateExpression,
+) -> tac::Value {
     let temp1 = ctx.temp_var();
     let var = map_lvalue(&expr.lvalue);
 
@@ -234,10 +264,26 @@ fn lower_update_expr_postfix(ctx: &mut LoweringContext, expr: &ast::UpdateExpres
 
     let op = map_ast_update_op(expr.op);
     let lhs = tac::Value::Variable(var);
-    let rhs = tac::Value::Constant(tac::Constant{ value: 1});
+    let rhs = tac::Value::Constant(tac::Constant { value: 1 });
     ctx.instrs.binary(op, lhs, rhs, var);
 
     tac::Value::Variable(temp1)
+}
+
+fn map_ast_compount_assignemnt_op(op: ast::AssignmentOperator) -> tac::BinaryOperator {
+    match op {
+        ast::AssignmentOperator::Add => tac::BinaryOperator::Add,
+        ast::AssignmentOperator::Substract => tac::BinaryOperator::Substract ,
+        ast::AssignmentOperator::Multiply => tac::BinaryOperator::Multiply ,
+        ast::AssignmentOperator::Divide => tac::BinaryOperator::Divide ,
+        ast::AssignmentOperator::Remainder => tac::BinaryOperator::Remainder ,
+        ast::AssignmentOperator::BitwiseAnd => tac::BinaryOperator::BitwiseAnd ,
+        ast::AssignmentOperator::BitwiseOr => tac::BinaryOperator::BitwiseOr ,
+        ast::AssignmentOperator::BitwiseXor => tac::BinaryOperator::BitwiseXor ,
+        ast::AssignmentOperator::LeftShift => tac::BinaryOperator::LeftShift ,
+        ast::AssignmentOperator::RightShift => tac::BinaryOperator::RightShift ,
+        _ => unreachable!("Compount assingment operator: {op:?}")
+    }
 }
 
 fn map_ast_binary_op(op: ast::BinaryOperator) -> tac::BinaryOperator {

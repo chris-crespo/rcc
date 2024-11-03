@@ -17,7 +17,7 @@ fn map_assignment_operator(kind: TokenKind) -> AssignmentOperator {
         TokenKind::MinusEq => AssignmentOperator::Substract,
         TokenKind::StarEq => AssignmentOperator::Multiply,
         TokenKind::SlashEq => AssignmentOperator::Divide,
-        TokenKind::PercentEq => AssignmentOperator::Remainded,
+        TokenKind::PercentEq => AssignmentOperator::Remainder,
         TokenKind::AmpEq => AssignmentOperator::BitwiseAnd,
         TokenKind::PipeEq => AssignmentOperator::BitwiseOr,
         TokenKind::CaretEq => AssignmentOperator::BitwiseXor,
