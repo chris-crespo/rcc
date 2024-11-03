@@ -30,7 +30,6 @@ fn map_binary_operator(kind: TokenKind) -> BinaryOperator {
         TokenKind::Amp => BinaryOperator::BitwiseAnd,
         TokenKind::Amp2 => BinaryOperator::And,
         TokenKind::BangEq => BinaryOperator::NotEqual,
-        TokenKind::Eq => BinaryOperator::Assign,
         TokenKind::Eq2 => BinaryOperator::Equal,
         TokenKind::Pipe => BinaryOperator::BitwiseOr,
         TokenKind::Pipe2 => BinaryOperator::Or,

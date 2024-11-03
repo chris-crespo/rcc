@@ -1,6 +1,6 @@
 use rcc_span::Span;
 
-use crate::{BinaryOperator, Expression};
+use crate::Expression;
 
 impl<'a> Expression<'a> {
     pub fn span(&self) -> Span {
@@ -11,11 +11,5 @@ impl<'a> Expression<'a> {
             Expression::Binary(expr) => expr.span,
             Expression::Unary(expr) => expr.span,
         }
-    }
-}
-
-impl BinaryOperator {
-    pub fn right_assoc(self) -> bool {
-        matches!(self, BinaryOperator::Assign)
     }
 }

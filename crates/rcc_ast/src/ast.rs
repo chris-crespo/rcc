@@ -116,7 +116,6 @@ pub enum BinaryOperator {
     RightShift,
     And,
     Or,
-    Assign,
     Equal,
     NotEqual,
     LessThan,
