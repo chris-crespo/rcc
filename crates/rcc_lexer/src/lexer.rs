@@ -158,6 +158,7 @@ impl<'src> Lexer<'src> {
                         self.make_token(TokenKind::Bang)
                     }
                 }
+                ':' => self.make_token(TokenKind::Colon),
                 '|' => {
                     if self.eat_char('|') {
                         self.make_token(TokenKind::Pipe2)
@@ -207,6 +208,7 @@ impl<'src> Lexer<'src> {
                         self.make_token(TokenKind::Gt)
                     }
                 }
+                '?' => self.make_token(TokenKind::Question),
                 '0'..='9' => self.parse_number(),
                 'a'..='z' | 'A'..='Z' => self.parse_identifier(),
                 _ => self.make_token(TokenKind::Undetermined),
@@ -246,6 +248,8 @@ impl<'src> Lexer<'src> {
 
     fn match_keyword(&self) -> Token {
         match self.source() {
+            "else" => self.make_token(TokenKind::Else),
+            "if" => self.make_token(TokenKind::If),
             "int" => self.make_token(TokenKind::Int),
             "return" => self.make_token(TokenKind::Return),
             "typedef" => self.make_token(TokenKind::Typedef),
