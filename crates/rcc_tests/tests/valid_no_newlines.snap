@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_no_newlines.c
+exit_status: 0

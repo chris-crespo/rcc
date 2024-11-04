@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_missplaced_semicolon.c
+compiler_output:
+  × Expected `)` but found `;`
+   ╭─[2:18]
+ 1 │ int main(void) {
+ 2 │     return 1 + (2;)
+   ·                  ┬
+   ·                  ╰── `)` expected
+ 3 │ }
+   ╰────

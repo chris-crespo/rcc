@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_undeclared_var.c
+compiler_output:
+  × Undefined `a`
+   ╭─[2:12]
+ 1 │ int main(void) {
+ 2 │     return a;
+   ·            ─
+ 3 │ }
+   ╰────

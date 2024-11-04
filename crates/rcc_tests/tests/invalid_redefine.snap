@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_redefine.c
+compiler_output:
+  × Redefined `a`
+   ╭─[3:9]
+ 2 │     int a = 1;
+ 3 │     int a = 2;
+   ·         ─
+ 4 │     return a;
+   ╰────

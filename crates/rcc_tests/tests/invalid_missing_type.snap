@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_missing_type.c
+compiler_output:
+  × Expected `int` but found `identifier`
+   ╭─[1:1]
+ 1 │ main(void) {
+   · ──┬─
+   ·   ╰── `int` expected
+ 2 │     return 0;
+   ╰────

@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_associativity_2.c
+exit_status: 1

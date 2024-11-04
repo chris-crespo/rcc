@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_missing_const.c
+compiler_output:
+  × Unexpected token
+   ╭─[3:12]
+ 2 │ {
+ 3 │     10 <= !;
+   ·            ─
+ 4 │ }
+   ╰────

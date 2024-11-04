@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_compound_initializer.c
+compiler_output:
+  × Expected `;` but found `+=`
+   ╭─[2:11]
+ 1 │ int main(void) {
+ 2 │     int a += 0;
+   ·           ─┬
+   ·            ╰── `;` expected
+ 3 │     return a;
+   ╰────

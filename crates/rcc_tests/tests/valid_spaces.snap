@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_spaces.c
+exit_status: 0

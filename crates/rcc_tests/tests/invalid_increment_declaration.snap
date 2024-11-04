@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_increment_declaration.c
+compiler_output:
+  × Expected `;` but found `++`
+   ╭─[2:10]
+ 1 │ int main(void) {
+ 2 │     int a++;
+   ·          ─┬
+   ·           ╰── `;` expected
+ 3 │     return 0;
+   ╰────

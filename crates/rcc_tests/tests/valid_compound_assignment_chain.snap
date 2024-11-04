@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_compound_assignment_chain.c
+exit_status: 1

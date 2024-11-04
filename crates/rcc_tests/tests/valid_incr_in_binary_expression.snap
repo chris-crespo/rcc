@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_incr_in_binary_expression.c
+exit_status: 1

@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_declare_keyword_as_var.c
+compiler_output:
+  × Expected `identifier` but found `return`
+   ╭─[2:9]
+ 1 │ int main(void) {
+ 2 │     int return = 4;
+   ·         ───┬──
+   ·            ╰── `identifier` expected
+ 3 │     return return + 1;
+   ╰────

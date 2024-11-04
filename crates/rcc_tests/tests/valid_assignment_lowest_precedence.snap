@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_assignment_lowest_precedence.c
+exit_status: 1

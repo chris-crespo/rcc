@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_function_name.c
+compiler_output:
+  × Expected `identifier` but found `number`
+   ╭─[1:5]
+ 1 │ int 3 (void) {
+   ·     ┬
+   ·     ╰── `identifier` expected
+ 2 │     return 0;
+   ╰────

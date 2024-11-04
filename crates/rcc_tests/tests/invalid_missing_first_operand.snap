@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_missing_first_operand.c
+compiler_output:
+  × Unexpected token
+   ╭─[2:12]
+ 1 │ int main(void) {
+ 2 │     return /3;
+   ·            ─
+ 3 │ }
+   ╰────

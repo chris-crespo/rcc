@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_type.c
+compiler_output:
+  × Undefined `ints`
+   ╭─[2:5]
+ 1 │ int main(void) {
+ 2 │     ints a = 1;
+   ·     ────
+ 3 │     return a;
+   ╰────

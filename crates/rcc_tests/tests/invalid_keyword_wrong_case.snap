@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_keyword_wrong_case.c
+compiler_output:
+  × Undefined `RETURN`
+   ╭─[2:5]
+ 1 │ int main(void) {
+ 2 │     RETURN 0;
+   ·     ──────
+ 3 │ }
+   ╰────

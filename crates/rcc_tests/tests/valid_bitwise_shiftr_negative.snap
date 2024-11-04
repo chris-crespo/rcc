@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_bitwise_shiftr_negative.c
+exit_status: 255

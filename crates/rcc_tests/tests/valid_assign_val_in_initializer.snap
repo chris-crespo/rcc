@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_assign_val_in_initializer.c
+exit_status: 5
