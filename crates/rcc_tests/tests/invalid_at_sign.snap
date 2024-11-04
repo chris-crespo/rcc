@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_at_sign.c
+compiler_output:
+  × Expected `;` but found `undetermined`
+   ╭─[2:13]
+ 1 │ int main(void) {
+ 2 │     return 0@1;
+   ·             ┬
+   ·             ╰── `;` expected
+ 3 │ }
+   ╰────

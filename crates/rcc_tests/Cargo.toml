@@ -1,0 +1,10 @@
+[package]
+name = "rcc_tests"
+version.workspace = true
+edition.workspace = true
+
+[dev-dependencies]
+insta      = { workspace = true }
+insta-cmd  = { workspace = true }
+serde      = { workspace = true }
+serde_json = { workspace = true }

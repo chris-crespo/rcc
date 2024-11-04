@@ -23,3 +23,12 @@ allocator-api2 = { version = "0.2.18" }
 bumpalo        = { version = "3.16.0" }
 clap           = { version = "4.5.17", features = ["derive"] }
 miette         = { version = "7.2.0", features = ["fancy"] }
+quote          = { version = "1.0" }
+syn            = { version = "1.0" }
+walkdir        = { version = "2.5" }
+
+# Dev dependencies
+insta      = { version = "1.41.1", features = ["glob"] }
+insta-cmd  = { version = "0.6.0" }
+serde      = { version = "1.0.214", features = ["derive"] }  
+serde_json = { version = "1.0.132" }
