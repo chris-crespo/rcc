@@ -91,6 +91,7 @@ fn lower_var_decl(ctx: &mut LoweringContext, decl: &ast::VariableDeclaration) {
 fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
     match stmt {
         ast::Statement::Expression(expr) => lower_expr_stmt(ctx, expr),
+        ast::Statement::If(stmt) => todo!(),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
         ast::Statement::Empty(_) => {}
     }
@@ -117,6 +118,7 @@ fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
             lower_or_expr(ctx, expr)
         }
         ast::Expression::Binary(expr) => lower_binary_expr(ctx, expr),
+        ast::Expression::Conditional(expr) => todo!(),
         ast::Expression::Unary(expr) => lower_unary_expr(ctx, expr),
         ast::Expression::Update(expr) if expr.postfix => lower_update_expr_postfix(ctx, expr),
         ast::Expression::Update(expr) => lower_update_expr_prefix(ctx, expr),

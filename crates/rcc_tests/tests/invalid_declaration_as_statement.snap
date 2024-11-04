@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_declaration_as_statement.c
+compiler_output:
+  × Unexpected token
+   ╭─[3:9]
+ 2 │     if (5)
+ 3 │         int i = 0;
+   ·         ───
+ 4 │ }
+   ╰────

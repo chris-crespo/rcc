@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_empty_if_body.c
+compiler_output:
+  × Unexpected token
+   ╭─[2:12]
+ 1 │ int main(void) {
+ 2 │     if (0) else return 0;
+   ·            ────
+ 3 │ }
+   ╰────

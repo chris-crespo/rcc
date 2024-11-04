@@ -2,7 +2,11 @@ use rcc_arena::Arena;
 use rcc_span::Span;
 
 use crate::{
-    AliasType, AssignmentExpression, AssignmentOperator, BinaryExpression, BinaryOperator, Block, BlockItem, Declaration, EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, Identifier, IntType, Lvalue, NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression, UnaryOperator, UpdateExpression, UpdateOperator, VariableDeclaration
+    AliasType, AssignmentExpression, AssignmentOperator, BinaryExpression, BinaryOperator, Block,
+    BlockItem, ConditionalExpression, Declaration, EmptyStatement, Expression, ExpressionStatement,
+    FunctionDeclaration, Identifier, IfStatement, IntType, Lvalue, NumberLiteral, Program,
+    ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression, UnaryOperator,
+    UpdateExpression, UpdateOperator, VariableDeclaration,
 };
 
 pub struct AstBuilder<'a> {
@@ -87,6 +91,32 @@ impl<'a> AstBuilder<'a> {
         EmptyStatement { span }
     }
 
+    pub fn stmt_if(
+        &self,
+        span: Span,
+        condition: Expression<'a>,
+        consequent: Statement<'a>,
+        alternate: Option<Statement<'a>>,
+    ) -> Statement<'a> {
+        let if_stmt = self.if_stmt(span, condition, consequent, alternate);
+        Statement::If(self.alloc(if_stmt))
+    }
+
+    pub fn if_stmt(
+        &self,
+        span: Span,
+        condition: Expression<'a>,
+        consequent: Statement<'a>,
+        alternate: Option<Statement<'a>>,
+    ) -> IfStatement<'a> {
+        IfStatement {
+            span,
+            condition,
+            consequent,
+            alternate,
+        }
+    }
+
     pub fn stmt_return(&self, span: Span, expr: Expression<'a>) -> Statement<'a> {
         let return_stmt = self.return_stmt(span, expr);
         Statement::Return(self.alloc(return_stmt))
@@ -123,7 +153,12 @@ impl<'a> AstBuilder<'a> {
         lvalue: Lvalue,
         expr: Expression<'a>,
     ) -> AssignmentExpression<'a> {
-        AssignmentExpression { span, op, lvalue, expr }
+        AssignmentExpression {
+            span,
+            op,
+            lvalue,
+            expr,
+        }
     }
 
     pub fn expr_binary(
@@ -145,6 +180,32 @@ impl<'a> AstBuilder<'a> {
         rhs: Expression<'a>,
     ) -> BinaryExpression<'a> {
         BinaryExpression { span, op, lhs, rhs }
+    }
+
+    pub fn expr_conditional(
+        &self,
+        span: Span,
+        condition: Expression<'a>,
+        consequent: Expression<'a>,
+        alternate: Expression<'a>,
+    ) -> Expression<'a> {
+        let conditional_expr = self.conditional_expr(span, condition, consequent, alternate);
+        Expression::Conditional(self.alloc(conditional_expr))
+    }
+
+    pub fn conditional_expr(
+        &self,
+        span: Span,
+        condition: Expression<'a>,
+        consequent: Expression<'a>,
+        alternate: Expression<'a>,
+    ) -> ConditionalExpression<'a> {
+        ConditionalExpression {
+            span,
+            condition,
+            consequent,
+            alternate,
+        }
     }
 
     pub fn expr_unary(
@@ -184,7 +245,12 @@ impl<'a> AstBuilder<'a> {
         postfix: bool,
         lvalue: Lvalue,
     ) -> UpdateExpression {
-        UpdateExpression { span, op, postfix, lvalue }
+        UpdateExpression {
+            span,
+            op,
+            postfix,
+            lvalue,
+        }
     }
 
     pub fn expr_number_lit(&self, span: Span, value: u64) -> Expression<'a> {

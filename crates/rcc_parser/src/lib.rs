@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use rcc_arena::Arena;
 use rcc_ast::{
-    AssignmentOperator, AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression, FunctionDeclaration, Identifier, Lvalue, Program, Statement, Type, UnaryOperator, UpdateOperator
+    AssignmentOperator, AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression,
+    FunctionDeclaration, Identifier, Lvalue, Program, Statement, Type, UnaryOperator,
+    UpdateOperator,
 };
 use rcc_interner::{Interner, Symbol};
 use rcc_lexer::{assignment_tokens, Lexer, LexerCheckpoint, Token, TokenKind};
@@ -23,7 +25,7 @@ fn map_assignment_operator(kind: TokenKind) -> AssignmentOperator {
         TokenKind::CaretEq => AssignmentOperator::BitwiseXor,
         TokenKind::Lt2Eq => AssignmentOperator::LeftShift,
         TokenKind::Gt2Eq => AssignmentOperator::RightShift,
-        _ => unreachable!("Assignment operator: {kind:?}")
+        _ => unreachable!("Assignment operator: {kind:?}"),
     }
 }
 
@@ -79,6 +81,7 @@ fn map_lvalue(expr: &Expression) -> Option<Lvalue> {
 enum Precedence {
     None,
     Assignment,
+    Conditional,
     LogicalOr,
     LogicalAnd,
     BitwiseOr,
@@ -93,29 +96,10 @@ enum Precedence {
     Postfix,
 }
 
-impl Precedence {
-    fn prev(self) -> Precedence {
-        match self {
-            Precedence::None | Precedence::Assignment => Precedence::None,
-            Precedence::LogicalOr => Precedence::Assignment,
-            Precedence::LogicalAnd => Precedence::LogicalOr,
-            Precedence::BitwiseOr => Precedence::LogicalAnd,
-            Precedence::BitwiseXor => Precedence::BitwiseOr,
-            Precedence::BitwiseAnd => Precedence::BitwiseXor,
-            Precedence::Equality => Precedence::BitwiseAnd,
-            Precedence::Comparison => Precedence::Equality,
-            Precedence::Shift => Precedence::Comparison,
-            Precedence::Term => Precedence::Shift,
-            Precedence::Factor => Precedence::Term,
-            Precedence::Prefix => Precedence::Factor,
-            Precedence::Postfix => Precedence::Prefix,
-        }
-    }
-}
-
 impl From<TokenKind> for Precedence {
     fn from(value: TokenKind) -> Self {
         match value {
+            TokenKind::Question => Precedence::Conditional,
             assignment_tokens!() => Precedence::Assignment,
             TokenKind::Pipe2 => Precedence::LogicalOr,
             TokenKind::Amp2 => Precedence::LogicalAnd,
@@ -476,6 +460,7 @@ impl<'a, 'src> Parser<'a, 'src> {
     fn parse_stmt(&mut self) -> Result<Statement<'src>> {
         let kind = self.curr_kind();
         match kind {
+            TokenKind::If => self.parse_stmt_if(),
             TokenKind::Semicolon => self.parse_stmt_empty(),
             TokenKind::Return => self.parse_stmt_return(),
             _ => self.parse_stmt_expr(),
@@ -488,6 +473,28 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let span = self.end_span(span);
         let stmt = self.ast.stmt_empty(span);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_if(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.expect(TokenKind::If)?;
+        self.expect(TokenKind::LeftParen)?;
+
+        let condition = self.parse_expr()?;
+        self.expect(TokenKind::RightParen)?;
+
+        let consequent = self.parse_stmt()?;
+        let alternate = if self.eat(TokenKind::Else) {
+            let stmt = self.parse_stmt()?;
+            Some(stmt)
+        } else {
+            None
+        };
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_if(span, condition, consequent, alternate);
 
         Ok(stmt)
     }
@@ -545,9 +552,10 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn parse_expr_infix(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
         match self.curr_kind() {
-            TokenKind::Plus2 | TokenKind::Minus2 => self.parse_expr_update_postfix(lhs),
             kind if kind.is_assignment_op() => self.parse_expr_assignment(lhs),
             kind if kind.is_binary_op() => self.parse_expr_binary(lhs),
+            TokenKind::Question => self.parse_expr_conditional(lhs),
+            TokenKind::Plus2 | TokenKind::Minus2 => self.parse_expr_update_postfix(lhs),
             _ => Err(self.unexpected()),
         }
     }
@@ -578,6 +586,20 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let span = self.end_span(lhs.span());
         let expr = self.ast.expr_binary(span, op, lhs, rhs);
+
+        Ok(expr)
+    }
+
+    fn parse_expr_conditional(&mut self, condition: Expression<'src>) -> Result<Expression<'src>> {
+        self.bump(); // Skip `?`
+
+        let consequent = self.parse_expr()?;
+        self.expect(TokenKind::Colon)?;
+
+        let alternate = self.parse_expr_(Precedence::Assignment)?;
+
+        let span = self.end_span(condition.span());
+        let expr = self.ast.expr_conditional(span, condition ,consequent, alternate);
 
         Ok(expr)
     }

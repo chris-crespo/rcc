@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_malformed_ternary.c
+compiler_output:
+  × Expected `;` but found `:`
+   ╭─[2:22]
+ 1 │ int main(void) {
+ 2 │     return 1 ? 2 : 3 : 4;
+   ·                      ┬
+   ·                      ╰── `;` expected
+ 3 │ }
+   ╰────

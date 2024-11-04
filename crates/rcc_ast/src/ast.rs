@@ -51,6 +51,7 @@ pub struct VariableDeclaration<'a> {
 #[derive(Debug)]
 pub enum Statement<'a> {
     Empty(&'a EmptyStatement),
+    If(&'a IfStatement<'a>),
     Return(&'a ReturnStatement<'a>),
     Expression(&'a ExpressionStatement<'a>),
 }
@@ -58,6 +59,14 @@ pub enum Statement<'a> {
 #[derive(Debug)]
 pub struct EmptyStatement {
     pub span: Span
+}
+
+#[derive(Debug)]
+pub struct IfStatement<'a> {
+    pub span: Span,
+    pub condition: Expression<'a>,
+    pub consequent: Statement<'a>,
+    pub alternate: Option<Statement<'a>>
 }
 
 #[derive(Debug)]
@@ -79,6 +88,7 @@ pub enum Expression<'a> {
 
     Assignment(&'a AssignmentExpression<'a>),
     Binary(&'a BinaryExpression<'a>),
+    Conditional(&'a ConditionalExpression<'a>),
     Unary(&'a UnaryExpression<'a>),
     Update(&'a UpdateExpression),
 }
@@ -139,6 +149,14 @@ pub enum BinaryOperator {
     LessThanEqual,
     GreaterThan,
     GreaterThanEqual,
+}
+
+#[derive(Debug)]
+pub struct ConditionalExpression<'a> {
+    pub span: Span,
+    pub condition: Expression<'a>,
+    pub consequent: Expression<'a>,
+    pub alternate: Expression<'a>
 }
 
 #[derive(Debug)]
