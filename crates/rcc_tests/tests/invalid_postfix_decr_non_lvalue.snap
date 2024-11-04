@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_postfix_decr_non_lvalue.c
+compiler_output:
+  × Invalid lvalue
+   ╭─[3:12]
+ 2 │     int a = 10;
+ 3 │     return a++--;
+   ·            ───
+ 4 │ }
+   ╰────

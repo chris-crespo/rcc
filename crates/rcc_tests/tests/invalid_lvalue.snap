@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_lvalue.c
+compiler_output:
+  × Invalid lvalue
+   ╭─[3:5]
+ 2 │     int a = 2;
+ 3 │     a + 3 = 4;
+   ·     ─────
+ 4 │     return a;
+   ╰────

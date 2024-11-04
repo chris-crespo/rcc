@@ -553,7 +553,6 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_expr_assignment(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
-        let span = self.start_span();
         let kind = self.curr_kind();
 
         self.bump(); // Skip operator
@@ -562,11 +561,13 @@ impl<'a, 'src> Parser<'a, 'src> {
         let lvalue = map_lvalue(&lhs).ok_or_else(|| diagnostics::invalid_lvalue(lhs.span()))?;
         let expr = self.parse_expr()?;
 
-        Ok(self.ast.expr_assignment(span, op, lvalue, expr))
+        let span = self.end_span(lhs.span());
+        let expr = self.ast.expr_assignment(span, op, lvalue, expr);
+
+        Ok(expr)
     }
 
     fn parse_expr_binary(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
-        let span = self.start_span();
         let kind = self.curr_kind();
 
         self.bump(); // Skip operator.
@@ -575,8 +576,9 @@ impl<'a, 'src> Parser<'a, 'src> {
         let precedence = Precedence::from(kind);
         let rhs = self.parse_expr_(precedence)?;
 
-        let span = self.end_span(span);
+        let span = self.end_span(lhs.span());
         let expr = self.ast.expr_binary(span, op, lhs, rhs);
+
         Ok(expr)
     }
 
@@ -611,7 +613,6 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_expr_update_postfix(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
-        let span = self.start_span();
         let kind = self.curr_kind();
 
         self.bump(); // Skip operator
@@ -619,7 +620,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         let op = map_update_operator(kind);
         let lvalue = map_lvalue(&lhs).ok_or_else(|| diagnostics::invalid_lvalue(lhs.span()))?;
 
-        let span = self.end_span(span);
+        let span = self.end_span(lhs.span());
         let expr = self.ast.expr_update(span, op, true, lvalue);
 
         Ok(expr)

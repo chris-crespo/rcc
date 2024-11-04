@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_prefix_incr_non_lvalue.c
+compiler_output:
+  × Invalid lvalue
+   ╭─[3:8]
+ 2 │     int a = 1;
+ 3 │     ++(a+1);
+   ·        ───
+ 4 │     return 0;
+   ╰────
