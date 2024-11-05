@@ -147,6 +147,10 @@ snapshot_tests![
     valid_compound_bitwise_chain,
     valid_div,
     valid_div_negative,
+    valid_if_else,
+    valid_if_nested,
+    valid_if_not_taken,
+    valid_if_taken,
     valid_incr_expression_statement,
     valid_incr_in_binary_expression,
     valid_incr_parenthesized,
@@ -156,6 +160,7 @@ snapshot_tests![
     valid_neg,
     valid_nested_ops,
     valid_nested_ops_2,
+    valid_nested_ternary,
     valid_newlines,
     valid_no_newlines,
     valid_non_shortcircuit_or,
@@ -176,6 +181,7 @@ snapshot_tests![
     valid_sub,
     valid_sub_negative,
     valid_tabs,
+    valid_ternary_shortcircuit,
     valid_unop_add,
     valid_unop_parens
 ];

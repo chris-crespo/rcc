@@ -1,5 +1,5 @@
 use instrs::Instrs;
-use rcc_ast::{self as ast, Lvalue};
+use rcc_ast as ast;
 use rcc_tac as tac;
 
 mod instrs;
@@ -91,7 +91,7 @@ fn lower_var_decl(ctx: &mut LoweringContext, decl: &ast::VariableDeclaration) {
 fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
     match stmt {
         ast::Statement::Expression(expr) => lower_expr_stmt(ctx, expr),
-        ast::Statement::If(stmt) => todo!(),
+        ast::Statement::If(stmt) => lower_if_stmt(ctx, stmt),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
         ast::Statement::Empty(_) => {}
     }
@@ -99,6 +99,47 @@ fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
 
 fn lower_expr_stmt(ctx: &mut LoweringContext, stmt: &ast::ExpressionStatement) {
     lower_expr(ctx, &stmt.expr);
+}
+
+fn lower_if_stmt(ctx: &mut LoweringContext, stmt: &ast::IfStatement) {
+    match &stmt.alternate {
+        Some(alternate) => lower_if_then_else(ctx, &stmt.condition, &stmt.consequent, alternate),
+        None => lower_if_then(ctx, &stmt.condition, &stmt.consequent),
+    }
+}
+
+fn lower_if_then(
+    ctx: &mut LoweringContext,
+    condition: &ast::Expression,
+    consequent: &ast::Statement,
+) {
+    let end_label = ctx.label();
+
+    let value = lower_expr(ctx, condition);
+    ctx.instrs.jmpz(value, end_label);
+
+    lower_stmt(ctx, consequent);
+    ctx.instrs.label(end_label);
+}
+
+fn lower_if_then_else(
+    ctx: &mut LoweringContext,
+    condition: &ast::Expression,
+    consequent: &ast::Statement,
+    alternate: &ast::Statement,
+) {
+    let else_label = ctx.label();
+    let end_label = ctx.label();
+
+    let value = lower_expr(ctx, condition);
+    ctx.instrs.jmpz(value, else_label);
+
+    lower_stmt(ctx, consequent);
+    ctx.instrs.jmp(end_label);
+    ctx.instrs.label(else_label);
+
+    lower_stmt(ctx, alternate);
+    ctx.instrs.label(end_label);
 }
 
 fn lower_return_stmt(ctx: &mut LoweringContext, stmt: &ast::ReturnStatement) {
@@ -118,7 +159,7 @@ fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
             lower_or_expr(ctx, expr)
         }
         ast::Expression::Binary(expr) => lower_binary_expr(ctx, expr),
-        ast::Expression::Conditional(expr) => todo!(),
+        ast::Expression::Conditional(expr) => lower_conditional_expr(ctx, expr),
         ast::Expression::Unary(expr) => lower_unary_expr(ctx, expr),
         ast::Expression::Update(expr) if expr.postfix => lower_update_expr_postfix(ctx, expr),
         ast::Expression::Update(expr) => lower_update_expr_prefix(ctx, expr),
@@ -131,7 +172,7 @@ fn lower_assignment_expr(
 ) -> tac::Value {
     match expr.op {
         ast::AssignmentOperator::Assign => lower_assignment_expr_simple(ctx, expr),
-        _ => lower_assignment_expr_compound(ctx, expr)
+        _ => lower_assignment_expr_compound(ctx, expr),
     }
 }
 
@@ -227,6 +268,29 @@ fn lower_binary_expr(ctx: &mut LoweringContext, expr: &ast::BinaryExpression) ->
     tac::Value::Variable(dest)
 }
 
+fn lower_conditional_expr(
+    ctx: &mut LoweringContext,
+    expr: &ast::ConditionalExpression,
+) -> tac::Value {
+    let result_var = ctx.temp_var();
+    let alternate_label = ctx.label();
+    let end_label = ctx.label();
+
+    let condition_value = lower_expr(ctx, &expr.condition);
+    ctx.instrs.jmpz(condition_value, alternate_label);
+
+    let consequent_value = lower_expr(ctx, &expr.consequent);
+    ctx.instrs.copy(consequent_value, result_var);
+    ctx.instrs.jmp(end_label);
+    ctx.instrs.label(alternate_label);
+
+    let alternate_value = lower_expr(ctx, &expr.alternate);
+    ctx.instrs.copy(alternate_value, result_var);
+    ctx.instrs.label(end_label);
+
+    tac::Value::Variable(result_var)
+}
+
 fn lower_unary_expr(ctx: &mut LoweringContext, expr: &ast::UnaryExpression) -> tac::Value {
     let op = map_ast_unary_op(expr.op);
     let src = lower_expr(ctx, &expr.expr);
@@ -275,16 +339,16 @@ fn lower_update_expr_postfix(
 fn map_ast_compount_assignemnt_op(op: ast::AssignmentOperator) -> tac::BinaryOperator {
     match op {
         ast::AssignmentOperator::Add => tac::BinaryOperator::Add,
-        ast::AssignmentOperator::Substract => tac::BinaryOperator::Substract ,
-        ast::AssignmentOperator::Multiply => tac::BinaryOperator::Multiply ,
-        ast::AssignmentOperator::Divide => tac::BinaryOperator::Divide ,
-        ast::AssignmentOperator::Remainder => tac::BinaryOperator::Remainder ,
-        ast::AssignmentOperator::BitwiseAnd => tac::BinaryOperator::BitwiseAnd ,
-        ast::AssignmentOperator::BitwiseOr => tac::BinaryOperator::BitwiseOr ,
-        ast::AssignmentOperator::BitwiseXor => tac::BinaryOperator::BitwiseXor ,
-        ast::AssignmentOperator::LeftShift => tac::BinaryOperator::LeftShift ,
-        ast::AssignmentOperator::RightShift => tac::BinaryOperator::RightShift ,
-        _ => unreachable!("Compount assingment operator: {op:?}")
+        ast::AssignmentOperator::Substract => tac::BinaryOperator::Substract,
+        ast::AssignmentOperator::Multiply => tac::BinaryOperator::Multiply,
+        ast::AssignmentOperator::Divide => tac::BinaryOperator::Divide,
+        ast::AssignmentOperator::Remainder => tac::BinaryOperator::Remainder,
+        ast::AssignmentOperator::BitwiseAnd => tac::BinaryOperator::BitwiseAnd,
+        ast::AssignmentOperator::BitwiseOr => tac::BinaryOperator::BitwiseOr,
+        ast::AssignmentOperator::BitwiseXor => tac::BinaryOperator::BitwiseXor,
+        ast::AssignmentOperator::LeftShift => tac::BinaryOperator::LeftShift,
+        ast::AssignmentOperator::RightShift => tac::BinaryOperator::RightShift,
+        _ => unreachable!("Compount assingment operator: {op:?}"),
     }
 }
 
@@ -337,7 +401,7 @@ fn map_id_expr(id: &ast::Identifier) -> tac::Value {
 
 fn map_lvalue(lvalue: &ast::Lvalue) -> tac::Variable {
     match lvalue {
-        Lvalue::Identifier(id) => map_var(id),
+        ast::Lvalue::Identifier(id) => map_var(id),
     }
 }
 
