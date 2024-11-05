@@ -91,7 +91,9 @@ fn lower_var_decl(ctx: &mut LoweringContext, decl: &ast::VariableDeclaration) {
 fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
     match stmt {
         ast::Statement::Expression(expr) => lower_expr_stmt(ctx, expr),
+        ast::Statement::Goto(stmt) => todo!(),
         ast::Statement::If(stmt) => lower_if_stmt(ctx, stmt),
+        ast::Statement::Labeled(stmt) => todo!(),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
         ast::Statement::Empty(_) => {}
     }

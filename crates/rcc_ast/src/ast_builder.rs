@@ -4,9 +4,9 @@ use rcc_span::Span;
 use crate::{
     AliasType, AssignmentExpression, AssignmentOperator, BinaryExpression, BinaryOperator, Block,
     BlockItem, ConditionalExpression, Declaration, EmptyStatement, Expression, ExpressionStatement,
-    FunctionDeclaration, Identifier, IfStatement, IntType, Lvalue, NumberLiteral, Program,
-    ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression, UnaryOperator,
-    UpdateExpression, UpdateOperator, VariableDeclaration,
+    FunctionDeclaration, GotoStatement, Identifier, IfStatement, IntType, Label, LabeledStatement,
+    Lvalue, NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration,
+    UnaryExpression, UnaryOperator, UpdateExpression, UpdateOperator, VariableDeclaration,
 };
 
 pub struct AstBuilder<'a> {
@@ -91,6 +91,15 @@ impl<'a> AstBuilder<'a> {
         EmptyStatement { span }
     }
 
+    pub fn stmt_goto(&self, span: Span, label: Label) -> Statement<'a> {
+        let goto_stmt = self.goto_stmt(span, label);
+        Statement::Goto(self.alloc(goto_stmt))
+    }
+
+    pub fn goto_stmt(&self, span: Span, label: Label) -> GotoStatement {
+        GotoStatement { span, label }
+    }
+
     pub fn stmt_if(
         &self,
         span: Span,
@@ -115,6 +124,15 @@ impl<'a> AstBuilder<'a> {
             consequent,
             alternate,
         }
+    }
+
+    pub fn stmt_labeled(&self, span: Span, label: Label, stmt: Statement<'a>) -> Statement<'a> {
+        let labeled_stmt = self.labeled_stmt(span, label, stmt);
+        Statement::Labeled(self.alloc(labeled_stmt))
+    }
+
+    pub fn labeled_stmt(&self, span: Span, label: Label, stmt: Statement<'a>) -> LabeledStatement<'a> {
+        LabeledStatement { span, label, stmt }
     }
 
     pub fn stmt_return(&self, span: Span, expr: Expression<'a>) -> Statement<'a> {

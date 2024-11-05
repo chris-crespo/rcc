@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_labeled_declaration.c
+compiler_output:
+  × Unexpected token
+   ╭─[3:5]
+ 2 │ label:
+ 3 │     int a = 0;
+   ·     ───
+ 4 │     return 0;
+   ╰────

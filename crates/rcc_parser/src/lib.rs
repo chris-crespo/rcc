@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rcc_arena::Arena;
 use rcc_ast::{
     AssignmentOperator, AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression,
-    FunctionDeclaration, Identifier, Lvalue, Program, Statement, Type, UnaryOperator,
+    FunctionDeclaration, Identifier, Label, Lvalue, Program, Statement, Type, UnaryOperator,
     UpdateOperator,
 };
 use rcc_interner::{Interner, Symbol};
@@ -244,6 +244,19 @@ impl<'a, 'src> Parser<'a, 'src> {
         result
     }
 
+    fn try_parse<T>(&mut self, f: impl FnOnce(&mut Parser<'a, 'src>) -> Result<T>) -> Option<T> {
+        let checkpoint = self.checkpoint();
+        let result = f(self);
+
+        match result {
+            Ok(it) => Some(it),
+            Err(_) => {
+                self.rewind(checkpoint);
+                None
+            }
+        }
+    }
+
     fn expected(&self, kind: TokenKind) -> miette::Report {
         diagnostics::expected(
             self.curr_token.span,
@@ -460,10 +473,14 @@ impl<'a, 'src> Parser<'a, 'src> {
     fn parse_stmt(&mut self) -> Result<Statement<'src>> {
         let kind = self.curr_kind();
         match kind {
+            TokenKind::Goto => self.parse_stmt_goto(),
             TokenKind::If => self.parse_stmt_if(),
             TokenKind::Semicolon => self.parse_stmt_empty(),
             TokenKind::Return => self.parse_stmt_return(),
-            _ => self.parse_stmt_expr(),
+            _ => self
+                .try_parse(|p| p.parse_stmt_labeled_start())
+                .map(|label| self.parse_stmt_labeled_rest(label))
+                .map_or_else(|| self.parse_stmt_expr(), std::convert::identity),
         }
     }
 
@@ -473,6 +490,19 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let span = self.end_span(span);
         let stmt = self.ast.stmt_empty(span);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_goto(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.expect(TokenKind::Goto)?;
+
+        let label = self.parse_label()?;
+        self.expect(TokenKind::Semicolon)?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_goto(span, label);
 
         Ok(stmt)
     }
@@ -495,6 +525,35 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let span = self.end_span(span);
         let stmt = self.ast.stmt_if(span, condition, consequent, alternate);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_labeled_start(&mut self) -> Result<Label> {
+        let label = self.parse_label()?;
+        self.expect(TokenKind::Colon)?;
+
+        Ok(label)
+    }
+
+    fn parse_stmt_labeled_rest(&mut self, label: Label) -> Result<Statement<'src>> {
+        let stmt = self.parse_stmt()?;
+
+        let span = self.end_span(label.span);
+        let stmt = self.ast.stmt_labeled(span, label, stmt);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_labeled(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        let label = self.parse_label()?;
+        self.expect(TokenKind::Colon)?;
+
+        let stmt = self.parse_stmt()?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_labeled(span, label, stmt);
 
         Ok(stmt)
     }
@@ -599,7 +658,9 @@ impl<'a, 'src> Parser<'a, 'src> {
         let alternate = self.parse_expr_(Precedence::Assignment)?;
 
         let span = self.end_span(condition.span());
-        let expr = self.ast.expr_conditional(span, condition ,consequent, alternate);
+        let expr = self
+            .ast
+            .expr_conditional(span, condition, consequent, alternate);
 
         Ok(expr)
     }
@@ -727,5 +788,15 @@ impl<'a, 'src> Parser<'a, 'src> {
         let id = Identifier { span, symbol };
 
         Ok(id)
+    }
+
+    fn parse_label(&mut self) -> Result<Label> {
+        let id = self.parse_id()?;
+        let label = Label {
+            span: id.span,
+            symbol: id.symbol,
+        };
+
+        Ok(label)
     }
 }

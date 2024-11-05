@@ -1,0 +1,11 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_label_without_statement.c
+compiler_output:
+  × Unexpected token
+   ╭─[3:1]
+ 2 │     foo:
+ 3 │ }
+   · ─
+   ╰────

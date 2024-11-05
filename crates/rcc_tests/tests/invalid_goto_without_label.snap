@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_goto_without_label.c
+compiler_output:
+  × Expected `identifier` but found `;`
+   ╭─[2:9]
+ 1 │ int main(void) {
+ 2 │     goto;
+   ·         ┬
+   ·         ╰── `identifier` expected
+ 3 │ lbl:
+   ╰────
