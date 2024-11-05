@@ -57,6 +57,7 @@ pub enum TokenKind {
     Question,
 
     Else,
+    Goto,
     If,
     Int,
     Return,
@@ -130,6 +131,7 @@ impl TokenKind {
             TokenKind::PipeEq => "|=",
             TokenKind::Question => "?",
             TokenKind::Else => "else",
+            TokenKind::Goto => "goto",
             TokenKind::If => "if",
             TokenKind::Int => "int",
             TokenKind::Return => "return",
