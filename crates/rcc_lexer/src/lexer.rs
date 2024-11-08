@@ -210,7 +210,7 @@ impl<'src> Lexer<'src> {
                 }
                 '?' => self.make_token(TokenKind::Question),
                 '0'..='9' => self.parse_number(),
-                'a'..='z' | 'A'..='Z' => self.parse_identifier(),
+                'a'..='z' | 'A'..='Z' | '_' => self.parse_identifier(),
                 _ => self.make_token(TokenKind::Undetermined),
             };
         }
