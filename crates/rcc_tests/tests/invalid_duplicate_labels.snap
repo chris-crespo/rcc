@@ -1,0 +1,16 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_duplicate_labels.c
+compiler_output:
+  × Redefined label `label`
+   ╭─[3:1]
+ 2 │     int x = 0;
+ 3 │ label:
+   · ──┬──
+   ·   ╰── previous definition of `label`
+ 4 │     x = 1;
+ 5 │ label:
+   · ─────
+ 6 │     return 2;
+   ╰────

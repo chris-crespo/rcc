@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_goto_missing_label.c
+compiler_output:
+  × Undefined label `label`
+   ╭─[2:10]
+ 1 │ int main(void) {
+ 2 │     goto label;
+   ·          ─────
+ 3 │     return 0;
+   ╰────
