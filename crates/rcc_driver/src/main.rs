@@ -40,8 +40,10 @@ fn main() {
 
     if args.lex {
         lex(&args.filename);
-    } else if args.parse || args.validate {
+    } else if args.parse {
         parse(&args.filename);
+    } else if args.validate {
+        validate(&args.filename)
     } else if args.tacky {
         tacky(&args.filename)
     } else if args.codegen {
@@ -90,6 +92,29 @@ fn parse(filename: &str) {
     };
 }
 
+fn validate(filename: &str) {
+    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
+
+    let arena = Arena::new();
+    let mut interner = Interner::new();
+
+    let parser = Parser::new(&source, &arena, &mut interner);
+    let program = match parser.parse() {
+        Ok(program) => program,
+        Err(err) => {
+            println!("{:?}", err.with_source_code(source.clone()));
+            std::process::exit(1)
+        }
+    };
+
+    let resolution_result = rcc_semantics::resolve(&interner, &program);
+    if !resolution_result.errors.is_empty() {
+        for error in resolution_result.errors {
+            println!("{:?}", error.with_source_code(source.clone()))
+        }
+    }
+}
+
 fn tacky(filename: &str) {
     let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
 
@@ -104,6 +129,13 @@ fn tacky(filename: &str) {
             std::process::exit(1)
         }
     };
+
+    let resolution_result = rcc_semantics::resolve(&interner, &program);
+    if !resolution_result.errors.is_empty() {
+        for error in resolution_result.errors {
+            println!("{:?}", error.with_source_code(source.clone()))
+        }
+    }
 
     let tac = lower_to_tac(&program);
     println!("{:#?}", tac);
@@ -124,6 +156,13 @@ fn codegen(filename: &str) {
         }
     };
 
+    let resolution_result = rcc_semantics::resolve(&interner, &program);
+    if !resolution_result.errors.is_empty() {
+        for error in resolution_result.errors {
+            println!("{:?}", error.with_source_code(source.clone()))
+        }
+    }
+
     let tac = lower_to_tac(&program);
     let asm = rcc_codegen::codegen(&tac);
     println!("{:#?}", asm);
@@ -143,6 +182,13 @@ fn compile(filename: &str) {
             std::process::exit(1)
         }
     };
+
+    let resolution_result = rcc_semantics::resolve(&interner, &program);
+    if !resolution_result.errors.is_empty() {
+        for error in resolution_result.errors {
+            println!("{:?}", error.with_source_code(source.clone()))
+        }
+    }
 
     let tac = lower_to_tac(&program);
     let asm = rcc_codegen::codegen(&tac);

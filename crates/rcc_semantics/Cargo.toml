@@ -1,0 +1,11 @@
+[package]
+name = "rcc_semantics"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rcc_ast      = { workspace = true }
+rcc_interner = { workspace = true }
+rcc_span     = { workspace = true }
+
+miette = { workspace = true }

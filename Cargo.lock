@@ -448,6 +448,7 @@ dependencies = [
  "rcc_interner",
  "rcc_lexer",
  "rcc_parser",
+ "rcc_semantics",
 ]
 
 [[package]]
@@ -470,6 +471,16 @@ dependencies = [
  "rcc_ast",
  "rcc_interner",
  "rcc_lexer",
+ "rcc_span",
+]
+
+[[package]]
+name = "rcc_semantics"
+version = "0.1.0"
+dependencies = [
+ "miette",
+ "rcc_ast",
+ "rcc_interner",
  "rcc_span",
 ]
 
