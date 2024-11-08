@@ -417,6 +417,7 @@ name = "rcc_ast_lowering"
 version = "0.1.0"
 dependencies = [
  "rcc_ast",
+ "rcc_interner",
  "rcc_tac",
 ]
 

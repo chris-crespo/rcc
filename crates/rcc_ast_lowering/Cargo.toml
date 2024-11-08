@@ -5,4 +5,5 @@ edition.workspace = true
 
 [dependencies]
 rcc_ast      = { workspace = true }
+rcc_interner = { workspace = true }
 rcc_tac      = { workspace = true }

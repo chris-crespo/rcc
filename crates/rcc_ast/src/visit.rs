@@ -1,5 +1,3 @@
-use std::iter::Empty;
-
 use crate::{
     AssignmentExpression, BinaryExpression, Block, BlockItem, ConditionalExpression, Declaration,
     EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, GotoStatement,

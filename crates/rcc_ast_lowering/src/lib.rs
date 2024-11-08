@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use instrs::Instrs;
 use rcc_ast as ast;
+use rcc_interner::Symbol;
 use rcc_tac as tac;
 
 mod instrs;
@@ -7,6 +10,10 @@ mod instrs;
 struct LoweringContext {
     temps: u32,
     labels: u32,
+
+    /// Maps user defined labels to the actual label number.
+    label_map: HashMap<Symbol, tac::Label>,
+
     instrs: Instrs,
 }
 
@@ -15,6 +22,7 @@ impl LoweringContext {
         LoweringContext {
             temps: 0,
             labels: 0,
+            label_map: HashMap::new(),
             instrs: Instrs::new(),
         }
     }
@@ -32,6 +40,16 @@ impl LoweringContext {
         self.labels += 1;
 
         tac::Label { id: label }
+    }
+
+    fn label_for(&mut self, label: ast::Label) -> tac::Label {
+        if let Some(&label) = self.label_map.get(&label.symbol) {
+            return label;
+        }
+
+        let tac_label = self.label();
+        self.label_map.insert(label.symbol, tac_label);
+        tac_label
     }
 }
 
@@ -91,9 +109,9 @@ fn lower_var_decl(ctx: &mut LoweringContext, decl: &ast::VariableDeclaration) {
 fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
     match stmt {
         ast::Statement::Expression(expr) => lower_expr_stmt(ctx, expr),
-        ast::Statement::Goto(stmt) => todo!(),
+        ast::Statement::Goto(stmt) => lower_goto_stmt(ctx, stmt),
         ast::Statement::If(stmt) => lower_if_stmt(ctx, stmt),
-        ast::Statement::Labeled(stmt) => todo!(),
+        ast::Statement::Labeled(stmt) => lower_label_stmt(ctx, stmt),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
         ast::Statement::Empty(_) => {}
     }
@@ -101,6 +119,11 @@ fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
 
 fn lower_expr_stmt(ctx: &mut LoweringContext, stmt: &ast::ExpressionStatement) {
     lower_expr(ctx, &stmt.expr);
+}
+
+fn lower_goto_stmt(ctx: &mut LoweringContext, stmt: &ast::GotoStatement) {
+    let label = ctx.label_for(stmt.label);
+    ctx.instrs.jmp(label);
 }
 
 fn lower_if_stmt(ctx: &mut LoweringContext, stmt: &ast::IfStatement) {
@@ -142,6 +165,14 @@ fn lower_if_then_else(
 
     lower_stmt(ctx, alternate);
     ctx.instrs.label(end_label);
+}
+
+fn lower_label_stmt(ctx: &mut LoweringContext, stmt: &ast::LabeledStatement) {
+    let label = ctx.label_for(stmt.label);
+    ctx.label_map.insert(stmt.label.symbol, label);
+
+    ctx.instrs.label(label);
+    lower_stmt(ctx, &stmt.stmt);
 }
 
 fn lower_return_stmt(ctx: &mut LoweringContext, stmt: &ast::ReturnStatement) {
