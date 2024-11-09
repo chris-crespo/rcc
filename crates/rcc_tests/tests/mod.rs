@@ -129,6 +129,8 @@ snapshot_tests![
     valid_and_shortcircuit,
     valid_and_true,
     valid_assign,
+    valid_assign_to_self,
+    valid_assign_to_self_2,
     valid_assign_val_in_initializer,
     valid_assignment_lowest_precedence,
     valid_associativity,
@@ -153,9 +155,11 @@ snapshot_tests![
     valid_compound_bitwise_chain,
     valid_div,
     valid_div_negative,
+    valid_empty_blocks,
     valid_fibonacci_goto,
     valid_goto_label_main,
     valid_goto_label_main_2,
+    valid_hidden_then_visible,
     valid_if_else,
     valid_if_nested,
     valid_if_not_taken,
@@ -163,6 +167,7 @@ snapshot_tests![
     valid_incr_expression_statement,
     valid_incr_in_binary_expression,
     valid_incr_parenthesized,
+    valid_inner_uninitialized,
     valid_local_var_missing_return,
     valid_mod,
     valid_mul,
@@ -192,5 +197,6 @@ snapshot_tests![
     valid_tabs,
     valid_ternary_shortcircuit,
     valid_unop_add,
-    valid_unop_parens
+    valid_unop_parens,
+    valid_use_in_inner_scope
 ];
