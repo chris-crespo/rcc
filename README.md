@@ -13,7 +13,7 @@ This compiler is not intended to match the capabilities of those such as `gcc` o
 - [x] Logical/Relational Operators
 - [x] Local Variables
 - [x] If Statements and Conditional Expressions
-- [ ] Compound Statements
+- [ ] Compound Statements ([*in progress*](https://github.com/chris-crespo/rcc/tree/ch7))
 - [ ] Loops
 - [ ] Functions
 - [ ] File Scope Variable Declarations and Storage-Class Specifiers
