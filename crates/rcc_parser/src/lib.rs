@@ -473,6 +473,7 @@ impl<'a, 'src> Parser<'a, 'src> {
     fn parse_stmt(&mut self) -> Result<Statement<'src>> {
         let kind = self.curr_kind();
         match kind {
+            TokenKind::LeftBrace => self.parse_stmt_compound(),
             TokenKind::Goto => self.parse_stmt_goto(),
             TokenKind::If => self.parse_stmt_if(),
             TokenKind::Semicolon => self.parse_stmt_empty(),
@@ -482,6 +483,13 @@ impl<'a, 'src> Parser<'a, 'src> {
                 .map(|label| self.parse_stmt_labeled_rest(label))
                 .map_or_else(|| self.parse_stmt_expr(), std::convert::identity),
         }
+    }
+
+    fn parse_stmt_compound(&mut self) -> Result<Statement<'src>> {
+        let block = self.parse_block()?;
+        let stmt = self.ast.stmt_compound(block);
+
+        Ok(stmt)
     }
 
     fn parse_stmt_empty(&mut self) -> Result<Statement<'src>> {

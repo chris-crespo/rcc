@@ -50,6 +50,7 @@ pub struct VariableDeclaration<'a> {
 
 #[derive(Debug)]
 pub enum Statement<'a> {
+    Compound(&'a Block<'a>),
     Empty(&'a EmptyStatement),
     Goto(&'a GotoStatement),
     If(&'a IfStatement<'a>),

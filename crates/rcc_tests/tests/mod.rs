@@ -115,6 +115,7 @@ snapshot_tests![
     invalid_missing_type,
     invalid_missplaced_semicolon,
     invalid_nested_missing_const,
+    invalid_out_of_scope,
     invalid_parenthesize_operand,
     invalid_postfix_decr_non_lvalue,
     invalid_prefix_incr_non_lvalue,

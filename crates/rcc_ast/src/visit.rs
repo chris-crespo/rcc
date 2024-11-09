@@ -177,6 +177,7 @@ pub fn walk_variable_decl<'src, V: Visit<'src>>(v: &V, decl: &VariableDeclaratio
 
 pub fn walk_stmt<'src, V: Visit<'src>>(v: &V, stmt: &Statement<'src>) {
     match stmt {
+        Statement::Compound(block) => v.visit_block(block),
         Statement::Empty(stmt) => v.visit_empty_stmt(stmt),
         Statement::Goto(stmt) => v.visit_goto_stmt(stmt),
         Statement::If(stmt) => v.visit_if_stmt(stmt),

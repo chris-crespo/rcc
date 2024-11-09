@@ -82,6 +82,10 @@ impl<'a> AstBuilder<'a> {
         VariableDeclaration { span, ty, id, expr }
     }
 
+    pub fn stmt_compound(&self, block: Block<'a>) -> Statement<'a> {
+        Statement::Compound(self.alloc(block))
+    }
+
     pub fn stmt_empty(&self, span: Span) -> Statement<'a> {
         let empty_stmt = self.empty_stmt(span);
         Statement::Empty(self.alloc(empty_stmt))
@@ -131,7 +135,12 @@ impl<'a> AstBuilder<'a> {
         Statement::Labeled(self.alloc(labeled_stmt))
     }
 
-    pub fn labeled_stmt(&self, span: Span, label: Label, stmt: Statement<'a>) -> LabeledStatement<'a> {
+    pub fn labeled_stmt(
+        &self,
+        span: Span,
+        label: Label,
+        stmt: Statement<'a>,
+    ) -> LabeledStatement<'a> {
         LabeledStatement { span, label, stmt }
     }
 
