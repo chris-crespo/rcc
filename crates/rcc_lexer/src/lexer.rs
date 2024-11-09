@@ -248,13 +248,18 @@ impl<'src> Lexer<'src> {
 
     fn match_keyword(&self) -> Token {
         match self.source() {
+            "break" => self.make_token(TokenKind::Break),
+            "continue" => self.make_token(TokenKind::Continue),
+            "do" => self.make_token(TokenKind::Do),
             "else" => self.make_token(TokenKind::Else),
+            "for" => self.make_token(TokenKind::For),
             "goto" => self.make_token(TokenKind::Goto),
             "if" => self.make_token(TokenKind::If),
             "int" => self.make_token(TokenKind::Int),
             "return" => self.make_token(TokenKind::Return),
             "typedef" => self.make_token(TokenKind::Typedef),
             "void" => self.make_token(TokenKind::Void),
+            "while" => self.make_token(TokenKind::While),
             _ => self.make_token(TokenKind::Identifier),
         }
     }
