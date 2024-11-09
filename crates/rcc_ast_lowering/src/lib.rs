@@ -1,18 +1,25 @@
 use std::collections::HashMap;
 
 use instrs::Instrs;
-use rcc_ast as ast;
+use rcc_ast::{self as ast, Identifier};
 use rcc_interner::Symbol;
 use rcc_tac as tac;
 
 mod instrs;
 
+#[derive(Debug, Default)]
+struct BlockScope {
+    /// Maps user defined variables to tac variables.
+    var_map: HashMap<Symbol, tac::Variable>,
+}
+
 struct LoweringContext {
-    temps: u32,
+    vars: u32,
     labels: u32,
 
-    /// Maps user defined labels to the actual label number.
+    /// Maps user defined labels to tac labels.
     label_map: HashMap<Symbol, tac::Label>,
+    scopes: Vec<BlockScope>,
 
     instrs: Instrs,
 }
@@ -20,19 +27,43 @@ struct LoweringContext {
 impl LoweringContext {
     fn new() -> LoweringContext {
         LoweringContext {
-            temps: 0,
+            vars: 0,
             labels: 0,
             label_map: HashMap::new(),
+            scopes: Vec::new(),
             instrs: Instrs::new(),
         }
     }
 
     fn temp_var(&mut self) -> tac::Variable {
-        let temp = self.temps;
-        self.temps += 1;
+        let var = self.vars;
+        self.vars += 1;
 
-        let temp_var = tac::TempVar::new(temp);
-        tac::Variable::Temp(temp_var)
+        tac::Variable { id: var }
+    }
+
+    fn define_var(&mut self, id: Identifier) -> tac::Variable {
+        let var = self.temp_var();
+        let curr_scope = self.scopes.last_mut().expect("scopes should not be empty");
+
+        curr_scope.var_map.insert(id.symbol, var);
+        var
+    }
+
+    fn lookup_var(&mut self, id: Identifier) -> tac::Variable {
+        *self.scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.var_map.get(&id.symbol))
+            .expect("variable should have been defined")
+    }
+
+    fn scoped(&mut self, f: impl FnOnce(&mut LoweringContext)) {
+        let scope = BlockScope::default();
+        self.scopes.push(scope);
+
+        f(self);
+        self.scopes.pop();
     }
 
     fn label(&mut self) -> tac::Label {
@@ -77,9 +108,11 @@ fn lower_decl_func(
 }
 
 fn lower_block(ctx: &mut LoweringContext, block: &ast::Block) {
-    for item in &block.items {
-        lower_block_item(ctx, item)
-    }
+    ctx.scoped(|ctx| {
+        for item in &block.items {
+            lower_block_item(ctx, item)
+        }
+    })
 }
 
 fn lower_block_item(ctx: &mut LoweringContext, block_item: &ast::BlockItem) {
@@ -101,7 +134,7 @@ fn lower_var_decl(ctx: &mut LoweringContext, decl: &ast::VariableDeclaration) {
         return;
     };
 
-    let var = map_var(&decl.id);
+    let var = ctx.define_var(decl.id);
     let value = lower_expr(ctx, expr);
     ctx.instrs.copy(value, var);
 }
@@ -184,7 +217,7 @@ fn lower_return_stmt(ctx: &mut LoweringContext, stmt: &ast::ReturnStatement) {
 fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
     match expr {
         ast::Expression::NumberLiteral(lit) => map_number_literal(lit),
-        ast::Expression::Identifier(id) => map_id_expr(id),
+        ast::Expression::Identifier(id) => map_id_expr(ctx, id),
         ast::Expression::Assignment(expr) => lower_assignment_expr(ctx, expr),
         ast::Expression::Binary(expr) if expr.op == ast::BinaryOperator::And => {
             lower_and_expr(ctx, expr)
@@ -214,7 +247,7 @@ fn lower_assignment_expr_simple(
     ctx: &mut LoweringContext,
     expr: &ast::AssignmentExpression,
 ) -> tac::Value {
-    let var = map_lvalue(&expr.lvalue);
+    let var = map_lvalue(ctx, &expr.lvalue);
     let value = lower_expr(ctx, &expr.expr);
     ctx.instrs.copy(value, var);
 
@@ -226,7 +259,7 @@ fn lower_assignment_expr_compound(
     expr: &ast::AssignmentExpression,
 ) -> tac::Value {
     let op = map_ast_compount_assignemnt_op(expr.op);
-    let var = map_lvalue(&expr.lvalue);
+    let var = map_lvalue(ctx, &expr.lvalue);
     let lhs = tac::Value::Variable(var);
     let rhs = lower_expr(ctx, &expr.expr);
 
@@ -342,7 +375,7 @@ fn lower_unary_expr(ctx: &mut LoweringContext, expr: &ast::UnaryExpression) -> t
 // temp1
 
 fn lower_update_expr_prefix(ctx: &mut LoweringContext, expr: &ast::UpdateExpression) -> tac::Value {
-    let var = map_lvalue(&expr.lvalue);
+    let var = map_lvalue(ctx, &expr.lvalue);
 
     let op = map_ast_update_op(expr.op);
     let lhs = tac::Value::Variable(var);
@@ -357,7 +390,7 @@ fn lower_update_expr_postfix(
     expr: &ast::UpdateExpression,
 ) -> tac::Value {
     let temp1 = ctx.temp_var();
-    let var = map_lvalue(&expr.lvalue);
+    let var = map_lvalue(ctx, &expr.lvalue);
 
     let src = tac::Value::Variable(var);
     ctx.instrs.copy(src, temp1);
@@ -428,19 +461,15 @@ fn map_number_literal(lit: &ast::NumberLiteral) -> tac::Value {
     tac::Value::Constant(constant_value)
 }
 
-fn map_id_expr(id: &ast::Identifier) -> tac::Value {
-    let var = map_var(id);
+fn map_id_expr(ctx: &mut LoweringContext, id: &ast::Identifier) -> tac::Value {
+    let var = ctx.lookup_var(*id);
     tac::Value::Variable(var)
 }
 
-fn map_lvalue(lvalue: &ast::Lvalue) -> tac::Variable {
+fn map_lvalue(ctx: &mut LoweringContext, lvalue: &ast::Lvalue) -> tac::Variable {
     match lvalue {
-        ast::Lvalue::Identifier(id) => map_var(id),
+        ast::Lvalue::Identifier(id) => ctx.lookup_var(*id),
     }
-}
-
-fn map_var(id: &ast::Identifier) -> tac::Variable {
-    tac::Variable::Id(id.symbol)
 }
 
 fn map_ast_id(id: &ast::Identifier) -> tac::Identifier {

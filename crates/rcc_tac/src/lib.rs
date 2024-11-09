@@ -1,7 +1,5 @@
 use rcc_interner::Symbol;
 
-mod tac_impl;
-
 #[derive(Debug)]
 pub struct Program {
     pub func: FunctionDeclaration,
@@ -112,13 +110,9 @@ pub struct Constant {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Variable {
-    Id(Symbol),
-    Temp(TempVar),
+pub struct Variable {
+    pub id: u32,
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TempVar(u32);
 
 #[derive(Debug, Clone, Copy)]
 pub struct Identifier {
