@@ -1,9 +1,10 @@
 use crate::{
-    AssignmentExpression, BinaryExpression, Block, BlockItem, ConditionalExpression, Declaration,
-    EmptyStatement, Expression, ExpressionStatement, FunctionDeclaration, GotoStatement,
-    Identifier, IfStatement, Label, LabeledStatement, Lvalue, NumberLiteral, Program,
-    ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression, UpdateExpression,
-    VariableDeclaration,
+    AssignmentExpression, BinaryExpression, Block, BlockItem, BreakStatement,
+    ConditionalExpression, ContinueStatement, Declaration, DoStatement, EmptyStatement, Expression,
+    ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement, Identifier,
+    IfStatement, Label, LabeledStatement, Lvalue, NumberLiteral, Program, ReturnStatement,
+    Statement, Type, TypedefDeclaration, UnaryExpression, UpdateExpression, VariableDeclaration,
+    WhileStatement,
 };
 
 pub trait VisitMut<'src>: Sized {
@@ -48,8 +49,33 @@ pub trait VisitMut<'src>: Sized {
     }
 
     #[inline]
+    fn visit_break_stmt(&mut self, stmt: &BreakStatement) {
+        walk_break_stmt(self, stmt);
+    }
+
+    #[inline]
+    fn visit_continue_stmt(&mut self, stmt: &ContinueStatement) {
+        walk_continue_stmt(self, stmt);
+    }
+
+    #[inline]
+    fn visit_do_stmt(&mut self, stmt: &DoStatement<'src>) {
+        walk_do_stmt(self, stmt);
+    }
+
+    #[inline]
     fn visit_empty_stmt(&mut self, stmt: &EmptyStatement) {
         walk_empty_stmt(self, stmt);
+    }
+
+    #[inline]
+    fn visit_for_stmt(&mut self, stmt: &ForStatement<'src>) {
+        walk_for_stmt(self, stmt);
+    }
+
+    #[inline]
+    fn visit_for_init(&mut self, init: &ForInit<'src>) {
+        walk_for_init(self, init)
     }
 
     #[inline]
@@ -75,6 +101,11 @@ pub trait VisitMut<'src>: Sized {
     #[inline]
     fn visit_return_stmt(&mut self, stmt: &ReturnStatement<'src>) {
         walk_return_stmt(self, stmt);
+    }
+
+    #[inline]
+    fn visit_while_stmt(&mut self, stmt: &WhileStatement<'src>) {
+        walk_while_stmt(self, stmt)
     }
 
     #[inline]
@@ -177,20 +208,55 @@ pub fn walk_variable_decl<'src, V: VisitMut<'src>>(v: &mut V, decl: &VariableDec
 
 pub fn walk_stmt<'src, V: VisitMut<'src>>(v: &mut V, stmt: &Statement<'src>) {
     match stmt {
+        Statement::Break(stmt) => v.visit_break_stmt(stmt),
         Statement::Compound(block) => v.visit_block(block),
+        Statement::Continue(stmt) => v.visit_continue_stmt(stmt),
+        Statement::Do(stmt) => v.visit_do_stmt(stmt),
         Statement::Empty(stmt) => v.visit_empty_stmt(stmt),
+        Statement::For(stmt) => v.visit_for_stmt(stmt),
         Statement::Goto(stmt) => v.visit_goto_stmt(stmt),
         Statement::If(stmt) => v.visit_if_stmt(stmt),
         Statement::Labeled(stmt) => v.visit_labeled_stmt(stmt),
         Statement::Return(stmt) => v.visit_return_stmt(stmt),
+        Statement::While(stmt) => v.visit_while_stmt(stmt),
         Statement::Expression(stmt) => v.visit_expr_stmt(stmt),
     }
+}
+
+pub fn walk_break_stmt<'src, V: VisitMut<'src>>(_v: &mut V, _stmt: &BreakStatement) {}
+
+pub fn walk_continue_stmt<'src, V: VisitMut<'src>>(_v: &mut V, _stmt: &ContinueStatement) {}
+
+pub fn walk_do_stmt<'src, V: VisitMut<'src>>(v: &mut V, stmt: &DoStatement<'src>) {
+    v.visit_stmt(&stmt.body);
+    v.visit_expr(&stmt.condition);
 }
 
 pub fn walk_empty_stmt<'src, V: VisitMut<'src>>(_v: &mut V, _stmt: &EmptyStatement) {}
 
 pub fn walk_expr_stmt<'src, V: VisitMut<'src>>(v: &mut V, stmt: &ExpressionStatement<'src>) {
     v.visit_expr(&stmt.expr);
+}
+
+pub fn walk_for_stmt<'src, V: VisitMut<'src>>(v: &mut V, stmt: &ForStatement<'src>) {
+    if let Some(init) = &stmt.init {
+        v.visit_for_init(init);
+    }
+
+    if let Some(condition) = &stmt.condition {
+        v.visit_expr(condition);
+    }
+
+    if let Some(post) = &stmt.post {
+        v.visit_expr(post);
+    }
+}
+
+pub fn walk_for_init<'src, V: VisitMut<'src>>(v: &mut V, init: &ForInit<'src>) {
+    match init {
+        ForInit::Declaration(decl) => v.visit_variable_decl(decl),
+        ForInit::Expression(expr) => v.visit_expr(expr),
+    }
 }
 
 pub fn walk_goto_stmt<'src, V: VisitMut<'src>>(v: &mut V, stmt: &GotoStatement) {
@@ -213,6 +279,11 @@ pub fn walk_labeled_stmt<'src, V: VisitMut<'src>>(v: &mut V, stmt: &LabeledState
 
 pub fn walk_return_stmt<'src, V: VisitMut<'src>>(v: &mut V, stmt: &ReturnStatement<'src>) {
     v.visit_expr(&stmt.expr);
+}
+
+pub fn walk_while_stmt<'src, V: VisitMut<'src>>(v: &mut V, stmt: &WhileStatement<'src>) {
+    v.visit_expr(&stmt.condition);
+    v.visit_stmt(&stmt.body);
 }
 
 pub fn walk_expr<'src, V: VisitMut<'src>>(v: &mut V, expr: &Expression<'src>) {

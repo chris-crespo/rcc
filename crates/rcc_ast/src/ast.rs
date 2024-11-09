@@ -50,18 +50,55 @@ pub struct VariableDeclaration<'a> {
 
 #[derive(Debug)]
 pub enum Statement<'a> {
+    Break(&'a BreakStatement),
     Compound(&'a Block<'a>),
+    Continue(&'a ContinueStatement),
+    Do(&'a DoStatement<'a>),
     Empty(&'a EmptyStatement),
+    For(&'a ForStatement<'a>),
     Goto(&'a GotoStatement),
     If(&'a IfStatement<'a>),
     Labeled(&'a LabeledStatement<'a>),
     Return(&'a ReturnStatement<'a>),
+    While(&'a WhileStatement<'a>),
     Expression(&'a ExpressionStatement<'a>),
+}
+
+#[derive(Debug)]
+pub struct BreakStatement {
+    pub span: Span
+}
+
+#[derive(Debug)]
+pub struct ContinueStatement {
+    pub span: Span
+}
+
+#[derive(Debug)]
+pub struct DoStatement<'a> {
+    pub span: Span,
+    pub body: Statement<'a>,
+    pub condition: Expression<'a>
 }
 
 #[derive(Debug)]
 pub struct EmptyStatement {
     pub span: Span
+}
+
+#[derive(Debug)]
+pub struct ForStatement<'a> {
+    pub span: Span,
+    pub init: Option<ForInit<'a>>,
+    pub condition: Option<Expression<'a>>,
+    pub post: Option<Expression<'a>>,
+    pub body: Statement<'a>
+}
+
+#[derive(Debug)]
+pub enum ForInit<'a> {
+    Declaration(&'a VariableDeclaration<'a>),
+    Expression(&'a Expression<'a>),
 }
 
 #[derive(Debug)]
@@ -89,6 +126,13 @@ pub struct LabeledStatement<'a> {
 pub struct ReturnStatement<'a> {
     pub span: Span,
     pub expr: Expression<'a>,
+}
+
+#[derive(Debug)]
+pub struct WhileStatement<'a> {
+    pub span: Span,
+    pub condition: Expression<'a>,
+    pub body: Statement<'a>
 }
 
 #[derive(Debug)]
