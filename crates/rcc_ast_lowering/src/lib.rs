@@ -130,11 +130,11 @@ fn lower_decl(ctx: &mut LoweringContext, decl: &ast::Declaration) {
 }
 
 fn lower_var_decl(ctx: &mut LoweringContext, decl: &ast::VariableDeclaration) {
+    let var = ctx.define_var(decl.id);
     let Some(expr) = &decl.expr else {
         return;
     };
 
-    let var = ctx.define_var(decl.id);
     let value = lower_expr(ctx, expr);
     ctx.instrs.copy(value, var);
 }
