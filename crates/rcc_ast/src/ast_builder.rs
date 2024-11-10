@@ -3,10 +3,11 @@ use rcc_span::Span;
 
 use crate::{
     AliasType, AssignmentExpression, AssignmentOperator, BinaryExpression, BinaryOperator, Block,
-    BlockItem, ConditionalExpression, Declaration, EmptyStatement, Expression, ExpressionStatement,
-    FunctionDeclaration, GotoStatement, Identifier, IfStatement, IntType, Label, LabeledStatement,
-    Lvalue, NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration,
-    UnaryExpression, UnaryOperator, UpdateExpression, UpdateOperator, VariableDeclaration,
+    BlockItem, BreakStatement, ConditionalExpression, ContinueStatement, Declaration, DoStatement,
+    EmptyStatement, Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration,
+    GotoStatement, Identifier, IfStatement, IntType, Label, LabeledStatement, Lvalue,
+    NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression,
+    UnaryOperator, UpdateExpression, UpdateOperator, VariableDeclaration, WhileStatement,
 };
 
 pub struct AstBuilder<'a> {
@@ -68,8 +69,8 @@ impl<'a> AstBuilder<'a> {
         id: Identifier,
         expr: Option<Expression<'a>>,
     ) -> Declaration<'a> {
-        let decl_var = self.var_decl(span, ty, id, expr);
-        Declaration::Variable(self.alloc(decl_var))
+        let var_decl = self.var_decl(span, ty, id, expr);
+        Declaration::Variable(self.alloc(var_decl))
     }
 
     pub fn var_decl(
@@ -82,13 +83,91 @@ impl<'a> AstBuilder<'a> {
         VariableDeclaration { span, ty, id, expr }
     }
 
+    pub fn stmt_break(&self, span: Span) -> Statement<'a> {
+        let break_stmt = self.break_stmt(span);
+        Statement::Break(self.alloc(break_stmt))
+    }
+
+    pub fn break_stmt(&self, span: Span) -> BreakStatement {
+        BreakStatement { span }
+    }
+
     pub fn stmt_compound(&self, block: Block<'a>) -> Statement<'a> {
         Statement::Compound(self.alloc(block))
+    }
+
+    pub fn stmt_continue(&self, span: Span) -> Statement<'a> {
+        let continue_stmt = self.continue_stmt(span);
+        Statement::Continue(self.alloc(continue_stmt))
+    }
+
+    pub fn continue_stmt(&self, span: Span) -> ContinueStatement {
+        ContinueStatement { span }
+    }
+
+    pub fn stmt_do(
+        &self,
+        span: Span,
+        body: Statement<'a>,
+        condition: Expression<'a>,
+    ) -> Statement<'a> {
+        let do_stmt = self.do_stmt(span, body, condition);
+        Statement::Do(self.alloc(do_stmt))
+    }
+
+    pub fn do_stmt(
+        &self,
+        span: Span,
+        body: Statement<'a>,
+        condition: Expression<'a>,
+    ) -> DoStatement<'a> {
+        DoStatement {
+            span,
+            body,
+            condition,
+        }
     }
 
     pub fn stmt_empty(&self, span: Span) -> Statement<'a> {
         let empty_stmt = self.empty_stmt(span);
         Statement::Empty(self.alloc(empty_stmt))
+    }
+
+    pub fn stmt_for(
+        &self,
+        span: Span,
+        init: Option<ForInit<'a>>,
+        condition: Option<Expression<'a>>,
+        post: Option<Expression<'a>>,
+        body: Statement<'a>,
+    ) -> Statement<'a> {
+        let for_stmt = self.for_stmt(span, init, condition, post, body);
+        Statement::For(self.alloc(for_stmt))
+    }
+
+    pub fn for_stmt(
+        &self,
+        span: Span,
+        init: Option<ForInit<'a>>,
+        condition: Option<Expression<'a>>,
+        post: Option<Expression<'a>>,
+        body: Statement<'a>,
+    ) -> ForStatement<'a> {
+        ForStatement {
+            span,
+            init,
+            condition,
+            post,
+            body,
+        }
+    }
+
+    pub fn for_init_decl(&self, decl: &'a VariableDeclaration) -> ForInit<'a> {
+        ForInit::Declaration(decl)
+    }
+
+    pub fn for_init_expr(&self, stmt: Expression<'a>) -> ForInit<'a> {
+        ForInit::Expression(self.alloc(stmt))
     }
 
     pub fn empty_stmt(&self, span: Span) -> EmptyStatement {
@@ -151,6 +230,29 @@ impl<'a> AstBuilder<'a> {
 
     pub fn return_stmt(&self, span: Span, expr: Expression<'a>) -> ReturnStatement<'a> {
         ReturnStatement { span, expr }
+    }
+
+    pub fn stmt_while(
+        &self,
+        span: Span,
+        condition: Expression<'a>,
+        body: Statement<'a>,
+    ) -> Statement<'a> {
+        let while_stmt = self.while_stmt(span, condition, body);
+        Statement::While(self.alloc(while_stmt))
+    }
+
+    pub fn while_stmt(
+        &self,
+        span: Span,
+        condition: Expression<'a>,
+        body: Statement<'a>,
+    ) -> WhileStatement<'a> {
+        WhileStatement {
+            span,
+            condition,
+            body,
+        }
     }
 
     pub fn stmt_expr(&self, span: Span, expr: Expression<'a>) -> Statement<'a> {

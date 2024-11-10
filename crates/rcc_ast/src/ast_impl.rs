@@ -1,6 +1,15 @@
 use rcc_span::Span;
 
-use crate::Expression;
+use crate::{Declaration, Expression};
+
+impl<'a> Declaration<'a> {
+    pub fn span(&self) -> Span {
+        match self {
+            Declaration::Typedef(decl) => decl.span,
+            Declaration::Variable(decl) => decl.span,
+        }
+    }
+}
 
 impl<'a> Expression<'a> {
     pub fn span(&self) -> Span {

@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_non_variable_declaration_in_for_loop.c
+compiler_output:
+  × Invalid declaration in for loop initial declaration
+   ╭─[2:8]
+ 1 │ int main(void) {
+ 2 │   for (typedef int i32;;);
+   ·        ───────┬───────
+   ·               ╰── expected variable declaration
+ 3 │ }
+   ╰────

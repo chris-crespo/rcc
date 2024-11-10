@@ -27,7 +27,13 @@ pub fn undefined(id: &str, span: Span) -> miette::Report {
 }
 
 pub fn invalid_lvalue(span: Span) -> miette::Report {
-    MietteDiagnostic::new(format!("Invalid lvalue"))
+    MietteDiagnostic::new("Invalid lvalue")
         .with_label(span)
+        .into()
+}
+
+pub fn non_variable_declaration_in_for_loop(span: Span) -> miette::Report {
+    MietteDiagnostic::new("Invalid declaration in for loop initial declaration")
+        .with_label(span.label("expected variable declaration"))
         .into()
 }

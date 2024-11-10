@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use rcc_arena::Arena;
 use rcc_ast::{
     AssignmentOperator, AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression,
-    FunctionDeclaration, Identifier, Label, Lvalue, Program, Statement, Type, UnaryOperator,
-    UpdateOperator,
+    ForInit, FunctionDeclaration, Identifier, Label, Lvalue, Program, Statement, Type,
+    UnaryOperator, UpdateOperator, VariableDeclaration,
 };
 use rcc_interner::{Interner, Symbol};
 use rcc_lexer::{assignment_tokens, Lexer, LexerCheckpoint, Token, TokenKind};
@@ -124,6 +124,12 @@ struct ParserCheckpoint<'a> {
     lexer: LexerCheckpoint<'a>,
     curr_token: Token,
     prev_token_end: u32,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum DeclarationContext {
+    BlockItem,
+    Loop,
 }
 
 #[derive(Debug, Default)]
@@ -413,27 +419,31 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_block_item(&mut self) -> Result<BlockItem<'src>> {
-        if self.curr_kind() == TokenKind::Typedef {
-            let decl = self.parse_decl_typedef()?;
-            let block_item = self.ast.block_item_decl(decl);
+        if let Some(decl) = self.maybe_parse_decl(DeclarationContext::BlockItem) {
+            let block_item = self.ast.block_item_decl(decl?);
             return Ok(block_item);
         }
 
-        match self.lookahead(|p| p.parse_ty()) {
-            Ok(_) => {
-                let decl = self.parse_decl_var()?;
-                let block_item = self.ast.block_item_decl(decl);
-                Ok(block_item)
-            }
-            Err(_) => {
-                let stmt = self.parse_stmt()?;
-                let block_item = self.ast.block_item_stmt(stmt);
-                Ok(block_item)
-            }
-        }
+        let stmt = self.parse_stmt()?;
+        let block_item = self.ast.block_item_stmt(stmt);
+        Ok(block_item)
     }
 
-    fn parse_decl_typedef(&mut self) -> Result<Declaration<'src>> {
+    fn maybe_parse_decl(&mut self, ctx: DeclarationContext) -> Option<Result<Declaration<'src>>> {
+        if self.curr_kind() == TokenKind::Typedef {
+            let decl = self.parse_decl_typedef(ctx);
+            return Some(decl);
+        }
+
+        if self.lookahead(|p| p.parse_ty()).is_ok() {
+            let decl = self.parse_decl_var(ctx);
+            return Some(decl);
+        }
+
+        None
+    }
+
+    fn parse_decl_typedef(&mut self, ctx: DeclarationContext) -> Result<Declaration<'src>> {
         let span = self.start_span();
         self.bump(); // Skip `typedef`
 
@@ -441,7 +451,9 @@ impl<'a, 'src> Parser<'a, 'src> {
         let id = self.parse_id()?;
         self.declare_typedef(&id);
 
-        self.expect(TokenKind::Semicolon)?;
+        if ctx == DeclarationContext::BlockItem {
+            self.expect(TokenKind::Semicolon)?;
+        }
 
         let span = self.end_span(span);
         let decl = self.ast.decl_typedef(span, ty, id);
@@ -449,7 +461,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         Ok(decl)
     }
 
-    fn parse_decl_var(&mut self) -> Result<Declaration<'src>> {
+    fn parse_decl_var(&mut self, ctx: DeclarationContext) -> Result<Declaration<'src>> {
         let span = self.start_span();
         let ty = self.parse_ty()?;
         let id = self.parse_id()?;
@@ -462,22 +474,29 @@ impl<'a, 'src> Parser<'a, 'src> {
             None
         };
 
-        self.expect(TokenKind::Semicolon)?;
+        if ctx == DeclarationContext::BlockItem {
+            self.expect(TokenKind::Semicolon)?;
+        }
 
         let span = self.end_span(span);
-        let decl = self.ast.decl_var(span, ty, id, expr);
+        let var_decl = self.ast.decl_var(span, ty, id, expr);
 
-        Ok(decl)
+        Ok(var_decl)
     }
 
     fn parse_stmt(&mut self) -> Result<Statement<'src>> {
         let kind = self.curr_kind();
         match kind {
+            TokenKind::Break => self.parse_stmt_break(),
             TokenKind::LeftBrace => self.parse_stmt_compound(),
+            TokenKind::Continue => self.parse_stmt_continue(),
+            TokenKind::Do => self.parse_stmt_do(),
+            TokenKind::For => self.parse_stmt_for(),
             TokenKind::Goto => self.parse_stmt_goto(),
             TokenKind::If => self.parse_stmt_if(),
             TokenKind::Semicolon => self.parse_stmt_empty(),
             TokenKind::Return => self.parse_stmt_return(),
+            TokenKind::While => self.parse_stmt_while(),
             _ => self
                 .try_parse(|p| p.parse_stmt_labeled_start())
                 .map(|label| self.parse_stmt_labeled_rest(label))
@@ -485,9 +504,48 @@ impl<'a, 'src> Parser<'a, 'src> {
         }
     }
 
+    fn parse_stmt_break(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `break`.
+        self.expect(TokenKind::Semicolon)?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_break(span);
+
+        Ok(stmt)
+    }
+
     fn parse_stmt_compound(&mut self) -> Result<Statement<'src>> {
         let block = self.parse_block()?;
         let stmt = self.ast.stmt_compound(block);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_continue(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `continue`.
+        self.expect(TokenKind::Semicolon)?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_continue(span);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_do(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `do`.
+
+        let body = self.parse_stmt()?;
+        self.expect(TokenKind::While)?;
+        self.expect(TokenKind::LeftParen)?;
+
+        let condition = self.parse_expr()?;
+        self.expect(TokenKind::RightParen)?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_do(span, body, condition);
 
         Ok(stmt)
     }
@@ -500,6 +558,62 @@ impl<'a, 'src> Parser<'a, 'src> {
         let stmt = self.ast.stmt_empty(span);
 
         Ok(stmt)
+    }
+
+    fn parse_stmt_for(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `for`.
+        self.expect(TokenKind::LeftParen)?;
+
+        let init = if self.eat(TokenKind::Semicolon) {
+            None
+        } else {
+            let init = self.parse_for_init()?;
+            self.expect(TokenKind::Semicolon)?;
+
+            Some(init)
+        };
+
+        let condition = if self.eat(TokenKind::Semicolon) {
+            None
+        } else {
+            let condition = self.parse_expr()?;
+            self.expect(TokenKind::Semicolon)?;
+
+            Some(condition)
+        };
+
+        let post = if self.eat(TokenKind::RightParen) {
+            None
+        } else {
+            let post = self.parse_expr()?;
+            self.expect(TokenKind::RightParen)?;
+
+            Some(post)
+        };
+
+        let body = self.parse_stmt()?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_for(span, init, condition, post, body);
+
+        Ok(stmt)
+    }
+
+    fn parse_for_init(&mut self) -> Result<ForInit<'src>> {
+        let Some(decl) = self.maybe_parse_decl(DeclarationContext::Loop) else {
+            let expr = self.parse_expr()?;
+            let init = self.ast.for_init_expr(expr);
+            return Ok(init);
+        };
+
+        match decl? {
+            Declaration::Variable(var_decl) => {
+                let init = self.ast.for_init_decl(var_decl);
+                Ok(init)
+            }
+            decl => Err(diagnostics::non_variable_declaration_in_for_loop(decl.span())),
+        }
     }
 
     fn parse_stmt_goto(&mut self) -> Result<Statement<'src>> {
@@ -575,6 +689,22 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let span = self.end_span(span);
         let stmt = self.ast.stmt_return(span, expr);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_while(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `while`.
+        self.expect(TokenKind::LeftParen)?;
+
+        let condition = self.parse_expr()?;
+        self.expect(TokenKind::RightParen)?;
+
+        let body = self.parse_stmt()?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_while(span, condition, body);
 
         Ok(stmt)
     }
