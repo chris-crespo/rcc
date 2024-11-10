@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_use_after_loop.c
+compiler_output:
+  × Undefined `x`
+   ╭─[3:10]
+ 2 │   for (int x = 1;;);
+ 3 │   return x;
+   ·          ─
+ 4 │ }
+   ╰────

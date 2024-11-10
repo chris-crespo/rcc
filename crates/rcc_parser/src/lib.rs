@@ -561,43 +561,45 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_stmt_for(&mut self) -> Result<Statement<'src>> {
-        let span = self.start_span();
-        self.bump(); // Skip `for`.
-        self.expect(TokenKind::LeftParen)?;
+        self.scoped(|p| {
+            let span = p.start_span();
+            p.bump(); // Skip `for`.
+            p.expect(TokenKind::LeftParen)?;
 
-        let init = if self.eat(TokenKind::Semicolon) {
-            None
-        } else {
-            let init = self.parse_for_init()?;
-            self.expect(TokenKind::Semicolon)?;
+            let init = if p.eat(TokenKind::Semicolon) {
+                None
+            } else {
+                let init = p.parse_for_init()?;
+                p.expect(TokenKind::Semicolon)?;
 
-            Some(init)
-        };
+                Some(init)
+            };
 
-        let condition = if self.eat(TokenKind::Semicolon) {
-            None
-        } else {
-            let condition = self.parse_expr()?;
-            self.expect(TokenKind::Semicolon)?;
+            let condition = if p.eat(TokenKind::Semicolon) {
+                None
+            } else {
+                let condition = p.parse_expr()?;
+                p.expect(TokenKind::Semicolon)?;
 
-            Some(condition)
-        };
+                Some(condition)
+            };
 
-        let post = if self.eat(TokenKind::RightParen) {
-            None
-        } else {
-            let post = self.parse_expr()?;
-            self.expect(TokenKind::RightParen)?;
+            let post = if p.eat(TokenKind::RightParen) {
+                None
+            } else {
+                let post = p.parse_expr()?;
+                p.expect(TokenKind::RightParen)?;
 
-            Some(post)
-        };
+                Some(post)
+            };
 
-        let body = self.parse_stmt()?;
+            let body = p.parse_stmt()?;
 
-        let span = self.end_span(span);
-        let stmt = self.ast.stmt_for(span, init, condition, post, body);
+            let span = p.end_span(span);
+            let stmt = p.ast.stmt_for(span, init, condition, post, body);
 
-        Ok(stmt)
+            Ok(stmt)
+        })
     }
 
     fn parse_for_init(&mut self) -> Result<ForInit<'src>> {
@@ -612,7 +614,9 @@ impl<'a, 'src> Parser<'a, 'src> {
                 let init = self.ast.for_init_decl(var_decl);
                 Ok(init)
             }
-            decl => Err(diagnostics::non_variable_declaration_in_for_loop(decl.span())),
+            decl => Err(diagnostics::non_variable_declaration_in_for_loop(
+                decl.span(),
+            )),
         }
     }
 
