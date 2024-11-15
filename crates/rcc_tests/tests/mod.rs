@@ -91,7 +91,9 @@ macro_rules! snapshot_tests {
 snapshot_tests![
     invalid_at_sign, 
     invalid_bitwise_double_pipe,
+    invalid_break_not_in_loop,
     invalid_compound_initializer,
+    invalid_continue_not_in_loop,
     invalid_declaration_as_statement,
     invalid_declare_keyword_as_var,
     invalid_double_operation,

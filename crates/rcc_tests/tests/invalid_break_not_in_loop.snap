@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_break_not_in_loop.c
+compiler_output:
+  × Break statement not within loop or switch
+   ╭─[3:9]
+ 2 │     if (1)
+ 3 │         break;
+   ·         ──────
+ 4 │ }
+   ╰────

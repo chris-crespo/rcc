@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_continue_not_in_loop.c
+compiler_output:
+  × Continue statement not within a loop
+   ╭─[4:9]
+ 3 │         int a;
+ 4 │         continue;
+   ·         ─────────
+ 5 │     }
+   ╰────

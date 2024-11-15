@@ -3,6 +3,7 @@ use rcc_interner::Interner;
 
 mod diagnostics;
 mod labels;
+mod loops;
 
 pub(crate) struct ResolutionContext<'a, 'src> {
     interner: &'a Interner<'src>,
@@ -32,6 +33,7 @@ pub struct ResolutionResult {
 pub fn resolve<'a>(interner: &'a Interner, program: &'a Program) -> ResolutionResult {
     let mut cx = ResolutionContext::new(interner);
     labels::resolve(&mut cx, program);
+    loops::resolve(&mut cx, program);
 
     ResolutionResult { errors: cx.errors }
 }

@@ -13,3 +13,15 @@ pub fn redefined_label(id: &str, span1: Span, span2: Span) -> miette::Report {
         .and_label(span2)
         .into()
 }
+
+pub fn break_stmt_not_within_loop_or_switch(span: Span) -> miette::Report {
+    MietteDiagnostic::new("Break statement not within loop or switch")
+        .with_label(span)
+        .into()
+}
+
+pub fn continue_stmt_not_within_loop(span: Span) -> miette::Report {
+    MietteDiagnostic::new("Continue statement not within a loop")
+        .with_label(span)
+        .into()
+}
