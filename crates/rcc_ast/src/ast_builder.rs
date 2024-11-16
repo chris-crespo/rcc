@@ -3,11 +3,13 @@ use rcc_span::Span;
 
 use crate::{
     AliasType, AssignmentExpression, AssignmentOperator, BinaryExpression, BinaryOperator, Block,
-    BlockItem, BreakStatement, ConditionalExpression, ContinueStatement, Declaration, DoStatement,
-    EmptyStatement, Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration,
-    GotoStatement, Identifier, IfStatement, IntType, Label, LabeledStatement, Lvalue,
-    NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression,
-    UnaryOperator, UpdateExpression, UpdateOperator, VariableDeclaration, WhileStatement,
+    BlockItem, BreakStatement, CaseLabeledStatement, ConditionalExpression, ContinueStatement,
+    Declaration, DefaultLabeledStatement, DoStatement, EmptyStatement, Expression,
+    ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement, Identifier,
+    IdentifierLabeledStatement, IfStatement, IntType, Label, LabeledStatement, Lvalue,
+    NumberLiteral, Program, ReturnStatement, Statement, SwitchStatement, Type, TypedefDeclaration,
+    UnaryExpression, UnaryOperator, UpdateExpression, UpdateOperator, VariableDeclaration,
+    WhileStatement,
 };
 
 pub struct AstBuilder<'a> {
@@ -209,18 +211,63 @@ impl<'a> AstBuilder<'a> {
         }
     }
 
-    pub fn stmt_labeled(&self, span: Span, label: Label, stmt: Statement<'a>) -> Statement<'a> {
-        let labeled_stmt = self.labeled_stmt(span, label, stmt);
-        Statement::Labeled(self.alloc(labeled_stmt))
+    pub fn stmt_labeled(&self, stmt: LabeledStatement<'a>) -> Statement<'a> {
+        Statement::Labeled(self.alloc(stmt))
     }
 
-    pub fn labeled_stmt(
+    pub fn labeled_stmt_case(
+        &self,
+        span: Span,
+        constant: &'a NumberLiteral,
+        stmt: Statement<'a>,
+    ) -> LabeledStatement<'a> {
+        let case_labeled_stmt = self.case_labeled_stmt(span, constant, stmt);
+        LabeledStatement::Case(self.alloc(case_labeled_stmt))
+    }
+
+    pub fn case_labeled_stmt(
+        &self,
+        span: Span,
+        constant: &'a NumberLiteral,
+        stmt: Statement<'a>,
+    ) -> CaseLabeledStatement<'a> {
+        CaseLabeledStatement {
+            span,
+            constant,
+            stmt,
+        }
+    }
+
+    pub fn labeled_stmt_default(&self, span: Span, stmt: Statement<'a>) -> LabeledStatement<'a> {
+        let default_labeled_stmt = self.default_labeled_stmt(span, stmt);
+        LabeledStatement::Default(self.alloc(default_labeled_stmt))
+    }
+
+    pub fn default_labeled_stmt(
+        &self,
+        span: Span,
+        stmt: Statement<'a>,
+    ) -> DefaultLabeledStatement<'a> {
+        DefaultLabeledStatement { span, stmt }
+    }
+
+    pub fn labeled_stmt_id(
         &self,
         span: Span,
         label: Label,
         stmt: Statement<'a>,
     ) -> LabeledStatement<'a> {
-        LabeledStatement { span, label, stmt }
+        let id_labeled_stmt = self.id_labeled_stmt(span, label, stmt);
+        LabeledStatement::Identifier(self.alloc(id_labeled_stmt))
+    }
+
+    pub fn id_labeled_stmt(
+        &self,
+        span: Span,
+        label: Label,
+        stmt: Statement<'a>,
+    ) -> IdentifierLabeledStatement<'a> {
+        IdentifierLabeledStatement { span, label, stmt }
     }
 
     pub fn stmt_return(&self, span: Span, expr: Expression<'a>) -> Statement<'a> {
@@ -230,6 +277,25 @@ impl<'a> AstBuilder<'a> {
 
     pub fn return_stmt(&self, span: Span, expr: Expression<'a>) -> ReturnStatement<'a> {
         ReturnStatement { span, expr }
+    }
+
+    pub fn stmt_switch(
+        &self,
+        span: Span,
+        expr: Expression<'a>,
+        body: Statement<'a>,
+    ) -> Statement<'a> {
+        let switch_stmt = self.switch_stmt(span, expr, body);
+        Statement::Switch(self.alloc(switch_stmt))
+    }
+
+    pub fn switch_stmt(
+        &self,
+        span: Span,
+        expr: Expression<'a>,
+        body: Statement<'a>,
+    ) -> SwitchStatement<'a> {
+        SwitchStatement { span, expr, body }
     }
 
     pub fn stmt_while(

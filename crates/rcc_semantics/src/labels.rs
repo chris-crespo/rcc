@@ -60,7 +60,7 @@ impl<'a, 'res, 'src> LabelCollector<'a, 'res, 'src> {
 }
 
 impl<'a, 'res, 'src> VisitMut<'src> for LabelCollector<'a, 'res, 'src> {
-    fn visit_labeled_stmt(&mut self, stmt: &rcc_ast::LabeledStatement<'src>) {
+    fn visit_id_labeled_stmt(&mut self, stmt: &rcc_ast::IdentifierLabeledStatement<'src>) {
         self.define_label(stmt.label);
         visit_mut::walk_stmt(self, &stmt.stmt);
     }

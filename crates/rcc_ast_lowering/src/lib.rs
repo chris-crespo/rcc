@@ -216,8 +216,9 @@ fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
         ast::Statement::For(stmt) => lower_for_stmt(ctx, stmt),
         ast::Statement::Goto(stmt) => lower_goto_stmt(ctx, stmt),
         ast::Statement::If(stmt) => lower_if_stmt(ctx, stmt),
-        ast::Statement::Labeled(stmt) => lower_label_stmt(ctx, stmt),
+        ast::Statement::Labeled(stmt) => lower_labeled_stmt(ctx, stmt),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
+        ast::Statement::Switch(stmt) => todo!(),
         ast::Statement::While(stmt) => lower_while_stmt(ctx, stmt),
         ast::Statement::Empty(_) => {}
     }
@@ -331,7 +332,18 @@ fn lower_if_then_else(
     ctx.instrs.label(end_label);
 }
 
-fn lower_label_stmt(ctx: &mut LoweringContext, stmt: &ast::LabeledStatement) {
+fn lower_labeled_stmt(ctx: &mut LoweringContext, stmt: &ast::LabeledStatement) {
+    match stmt {
+        ast::LabeledStatement::Case(_) => todo!(),
+        ast::LabeledStatement::Default(_) => todo!(),
+        ast::LabeledStatement::Identifier(stmt) => lower_identifier_labeled_stmt(ctx, stmt),
+    }
+}
+
+fn lower_identifier_labeled_stmt(
+    ctx: &mut LoweringContext,
+    stmt: &ast::IdentifierLabeledStatement,
+) {
     let label = ctx.label_for(stmt.label);
     ctx.label_map.insert(stmt.label.symbol, label);
 

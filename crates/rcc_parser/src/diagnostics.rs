@@ -37,3 +37,9 @@ pub fn non_variable_declaration_in_for_loop(span: Span) -> miette::Report {
         .with_label(span.label("expected variable declaration"))
         .into()
 }
+
+pub fn unfoldable_case_label(span: Span) -> miette::Report {
+    MietteDiagnostic::new("Case label cannot be folded into an integer constant")
+        .with_label(span)
+        .into()
+}

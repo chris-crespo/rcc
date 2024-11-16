@@ -1,6 +1,6 @@
 use rcc_span::Span;
 
-use crate::{Declaration, Expression};
+use crate::{Declaration, Expression, NumberLiteral};
 
 impl<'a> Declaration<'a> {
     pub fn span(&self) -> Span {
@@ -21,6 +21,13 @@ impl<'a> Expression<'a> {
             Expression::Conditional(expr) => expr.span,
             Expression::Unary(expr) => expr.span,
             Expression::Update(expr) => expr.span
+        }
+    }
+
+    pub fn try_as_number_lit(&self) -> Option<&'a NumberLiteral> {
+        match self {
+            Expression::NumberLiteral(lit) => Some(lit),
+            _ => None
         }
     }
 }

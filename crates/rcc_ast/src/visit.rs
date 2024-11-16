@@ -1,5 +1,5 @@
 use crate::{
-    AssignmentExpression, BinaryExpression, Block, BlockItem, BreakStatement, ConditionalExpression, ContinueStatement, Declaration, DoStatement, EmptyStatement, Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement, Identifier, IfStatement, Label, LabeledStatement, Lvalue, NumberLiteral, Program, ReturnStatement, Statement, Type, TypedefDeclaration, UnaryExpression, UpdateExpression, VariableDeclaration, WhileStatement
+    AssignmentExpression, BinaryExpression, Block, BlockItem, BreakStatement, CaseLabeledStatement, ConditionalExpression, ContinueStatement, Declaration, DefaultLabeledStatement, DoStatement, EmptyStatement, Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement, Identifier, IdentifierLabeledStatement, IfStatement, Label, LabeledStatement, Lvalue, NumberLiteral, Program, ReturnStatement, Statement, SwitchStatement, Type, TypedefDeclaration, UnaryExpression, UpdateExpression, VariableDeclaration, WhileStatement
 };
 
 pub trait Visit<'src>: Sized {
@@ -94,8 +94,28 @@ pub trait Visit<'src>: Sized {
     }
 
     #[inline]
+    fn visit_case_labeled_stmt(&self, stmt: &CaseLabeledStatement<'src>) {
+        walk_case_labeled_stmt(self, stmt);
+    }
+
+    #[inline]
+    fn visit_default_labeled_stmt(&self, stmt: &DefaultLabeledStatement<'src>) {
+        walk_default_labeled_stmt(self, stmt);
+    }
+
+    #[inline]
+    fn visit_id_labeled_stmt(&self, stmt: &IdentifierLabeledStatement<'src>) {
+        walk_id_labeled_stmt(self, stmt);
+    }
+
+    #[inline]
     fn visit_return_stmt(&self, stmt: &ReturnStatement<'src>) {
         walk_return_stmt(self, stmt);
+    }
+
+    #[inline]
+    fn visit_switch_stmt(&self, stmt: &SwitchStatement<'src>) {
+        walk_switch_stmt(self, stmt);
     }
 
     #[inline]
@@ -213,6 +233,7 @@ pub fn walk_stmt<'src, V: Visit<'src>>(v: &V, stmt: &Statement<'src>) {
         Statement::If(stmt) => v.visit_if_stmt(stmt),
         Statement::Labeled(stmt) => v.visit_labeled_stmt(stmt),
         Statement::Return(stmt) => v.visit_return_stmt(stmt),
+        Statement::Switch(stmt) => v.visit_switch_stmt(stmt),
         Statement::While(stmt) => v.visit_while_stmt(stmt),
         Statement::Expression(stmt) => v.visit_expr_stmt(stmt),
     }
@@ -268,12 +289,34 @@ pub fn walk_if_stmt<'src, V: Visit<'src>>(v: &V, stmt: &IfStatement<'src>) {
 }
 
 pub fn walk_labeled_stmt<'src, V: Visit<'src>>(v: &V, stmt: &LabeledStatement<'src>) {
+    match stmt {
+        LabeledStatement::Case(stmt) => v.visit_case_labeled_stmt(stmt),
+        LabeledStatement::Default(stmt) => v.visit_default_labeled_stmt(stmt),
+        LabeledStatement::Identifier(stmt) => v.visit_id_labeled_stmt(stmt),
+    }
+}
+
+pub fn walk_case_labeled_stmt<'src, V: Visit<'src>>(v: &V, stmt: &CaseLabeledStatement<'src>) {
+    v.visit_number_lit(&stmt.constant);
+    v.visit_stmt(&stmt.stmt);
+}
+
+pub fn walk_default_labeled_stmt<'src, V: Visit<'src>>(v: &V, stmt: &DefaultLabeledStatement<'src>) {
+    v.visit_stmt(&stmt.stmt);
+}
+
+pub fn walk_id_labeled_stmt<'src, V: Visit<'src>>(v: &V, stmt: &IdentifierLabeledStatement<'src>) {
     v.visit_label(&stmt.label);
     v.visit_stmt(&stmt.stmt)
 }
 
 pub fn walk_return_stmt<'src, V: Visit<'src>>(v: &V, stmt: &ReturnStatement<'src>) {
     v.visit_expr(&stmt.expr);
+}
+
+pub fn walk_switch_stmt<'src, V: Visit<'src>>(v: &V, stmt: &SwitchStatement<'src>) {
+    v.visit_expr(&stmt.expr);
+    v.visit_stmt(&stmt.body);
 }
 
 pub fn walk_while_stmt<'src, V: Visit<'src>>(v: &V, stmt: &WhileStatement<'src>) {

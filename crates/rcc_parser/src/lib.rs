@@ -488,18 +488,21 @@ impl<'a, 'src> Parser<'a, 'src> {
         let kind = self.curr_kind();
         match kind {
             TokenKind::Break => self.parse_stmt_break(),
+            TokenKind::Case => self.parse_stmt_labeled_case(),
             TokenKind::LeftBrace => self.parse_stmt_compound(),
             TokenKind::Continue => self.parse_stmt_continue(),
+            TokenKind::Default => self.parse_stmt_labeled_default(),
             TokenKind::Do => self.parse_stmt_do(),
             TokenKind::For => self.parse_stmt_for(),
             TokenKind::Goto => self.parse_stmt_goto(),
             TokenKind::If => self.parse_stmt_if(),
             TokenKind::Semicolon => self.parse_stmt_empty(),
             TokenKind::Return => self.parse_stmt_return(),
+            TokenKind::Switch => self.parse_stmt_switch(),
             TokenKind::While => self.parse_stmt_while(),
             _ => self
-                .try_parse(|p| p.parse_stmt_labeled_start())
-                .map(|label| self.parse_stmt_labeled_rest(label))
+                .try_parse(|p| p.parse_stmt_labeled_id_start())
+                .map(|label| self.parse_stmt_labeled_id_rest(label))
                 .map_or_else(|| self.parse_stmt_expr(), std::convert::identity),
         }
     }
@@ -655,31 +658,53 @@ impl<'a, 'src> Parser<'a, 'src> {
         Ok(stmt)
     }
 
-    fn parse_stmt_labeled_start(&mut self) -> Result<Label> {
+    fn parse_stmt_labeled_case(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `case`
+
+        let expr = self.parse_expr()?;
+        let constant = expr
+            .try_as_number_lit()
+            .map(Ok)
+            .unwrap_or_else(|| Err(diagnostics::unfoldable_case_label(expr.span())))?;
+        self.expect(TokenKind::Colon)?;
+
+        let stmt = self.parse_stmt()?;
+
+        let span = self.end_span(span);
+        let labeled_stmt = self.ast.labeled_stmt_case(span, constant, stmt);
+        let stmt = self.ast.stmt_labeled(labeled_stmt);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_labeled_default(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `default`
+        self.expect(TokenKind::Colon)?;
+
+        let stmt = self.parse_stmt()?;
+
+        let span = self.end_span(span);
+        let labeled_stmt = self.ast.labeled_stmt_default(span, stmt);
+        let stmt = self.ast.stmt_labeled(labeled_stmt);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_labeled_id_start(&mut self) -> Result<Label> {
         let label = self.parse_label()?;
         self.expect(TokenKind::Colon)?;
 
         Ok(label)
     }
 
-    fn parse_stmt_labeled_rest(&mut self, label: Label) -> Result<Statement<'src>> {
+    fn parse_stmt_labeled_id_rest(&mut self, label: Label) -> Result<Statement<'src>> {
         let stmt = self.parse_stmt()?;
 
         let span = self.end_span(label.span);
-        let stmt = self.ast.stmt_labeled(span, label, stmt);
-
-        Ok(stmt)
-    }
-
-    fn parse_stmt_labeled(&mut self) -> Result<Statement<'src>> {
-        let span = self.start_span();
-        let label = self.parse_label()?;
-        self.expect(TokenKind::Colon)?;
-
-        let stmt = self.parse_stmt()?;
-
-        let span = self.end_span(span);
-        let stmt = self.ast.stmt_labeled(span, label, stmt);
+        let labeled_stmt = self.ast.labeled_stmt_id(span, label, stmt);
+        let stmt = self.ast.stmt_labeled(labeled_stmt);
 
         Ok(stmt)
     }
@@ -693,6 +718,22 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let span = self.end_span(span);
         let stmt = self.ast.stmt_return(span, expr);
+
+        Ok(stmt)
+    }
+
+    fn parse_stmt_switch(&mut self) -> Result<Statement<'src>> {
+        let span = self.start_span();
+        self.expect(TokenKind::Switch)?;
+        self.expect(TokenKind::LeftParen)?;
+
+        let expr = self.parse_expr()?;
+        self.expect(TokenKind::RightParen)?;
+
+        let body = self.parse_stmt()?;
+
+        let span = self.end_span(span);
+        let stmt = self.ast.stmt_switch(span, expr, body);
 
         Ok(stmt)
     }

@@ -60,6 +60,7 @@ pub enum Statement<'a> {
     If(&'a IfStatement<'a>),
     Labeled(&'a LabeledStatement<'a>),
     Return(&'a ReturnStatement<'a>),
+    Switch(&'a SwitchStatement<'a>),
     While(&'a WhileStatement<'a>),
     Expression(&'a ExpressionStatement<'a>),
 }
@@ -116,7 +117,27 @@ pub struct IfStatement<'a> {
 }
 
 #[derive(Debug)]
-pub struct LabeledStatement<'a> {
+pub enum LabeledStatement<'a> {
+    Case(&'a CaseLabeledStatement<'a>),
+    Default(&'a DefaultLabeledStatement<'a>),
+    Identifier(&'a IdentifierLabeledStatement<'a>),
+}
+
+#[derive(Debug)]
+pub struct CaseLabeledStatement<'a> {
+    pub span: Span,
+    pub constant: &'a NumberLiteral,
+    pub stmt: Statement<'a>
+}
+
+#[derive(Debug)]
+pub struct DefaultLabeledStatement<'a> {
+    pub span: Span,
+    pub stmt: Statement<'a>
+}
+
+#[derive(Debug)]
+pub struct IdentifierLabeledStatement<'a> {
     pub span: Span,
     pub label: Label,
     pub stmt: Statement<'a>
@@ -126,6 +147,13 @@ pub struct LabeledStatement<'a> {
 pub struct ReturnStatement<'a> {
     pub span: Span,
     pub expr: Expression<'a>,
+}
+
+#[derive(Debug)]
+pub struct SwitchStatement<'a> {
+    pub span: Span,
+    pub expr: Expression<'a>,
+    pub body: Statement<'a>
 }
 
 #[derive(Debug)]
