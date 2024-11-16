@@ -23,6 +23,7 @@
             rustfmt
             clippy
             gcc
+            gdb
             cargo-insta
           ];
         };

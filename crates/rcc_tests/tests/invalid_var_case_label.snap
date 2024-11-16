@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_var_case_label.c
+compiler_output:
+  × Case label cannot be folded into an integer constant
+   ╭─[4:10]
+ 3 │   switch (1) {
+ 4 │     case x:;
+   ·          ─
+ 5 │   }
+   ╰────

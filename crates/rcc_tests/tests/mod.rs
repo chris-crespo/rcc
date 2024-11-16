@@ -127,6 +127,7 @@ snapshot_tests![
     invalid_type,
     invalid_unclosed_paren,
     invalid_undeclared_var,
+    invalid_unfoldable_case_label,
     invalid_use_after_loop,
     invalid_var_case_label,
     valid_add_variables,

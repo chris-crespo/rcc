@@ -11,6 +11,7 @@ use rcc_lexer::{assignment_tokens, Lexer, LexerCheckpoint, Token, TokenKind};
 use rcc_span::Span;
 
 mod diagnostics;
+mod fold;
 
 fn map_assignment_operator(kind: TokenKind) -> AssignmentOperator {
     match kind {
@@ -827,7 +828,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         let rhs = self.parse_expr_(precedence)?;
 
         let span = self.end_span(lhs.span());
-        let expr = self.ast.expr_binary(span, op, lhs, rhs);
+        let expr = self.fold_binary_expr(span, op, lhs, rhs);
 
         Ok(expr)
     }
@@ -841,9 +842,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         let alternate = self.parse_expr_(Precedence::Assignment)?;
 
         let span = self.end_span(condition.span());
-        let expr = self
-            .ast
-            .expr_conditional(span, condition, consequent, alternate);
+        let expr = self.fold_condition_expr(span, condition, consequent, alternate);
 
         Ok(expr)
     }
@@ -858,7 +857,8 @@ impl<'a, 'src> Parser<'a, 'src> {
         let expr = self.parse_expr_(Precedence::Prefix)?;
 
         let span = self.end_span(span);
-        let expr = self.ast.expr_unary(span, op, expr);
+        let expr = self.fold_unary_expr(span, op, expr);
+
         Ok(expr)
     }
 
