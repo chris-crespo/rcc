@@ -161,6 +161,9 @@ snapshot_tests![
     valid_div_negative,
     valid_empty_blocks,
     valid_fibonacci_goto,
+    valid_for_shadow,
+    valid_do_while,
+    valid_do_while_break_immediate,
     valid_goto_label_main,
     valid_goto_label_main_2,
     valid_hidden_then_visible,
@@ -202,5 +205,6 @@ snapshot_tests![
     valid_ternary_shortcircuit,
     valid_unop_add,
     valid_unop_parens,
-    valid_use_in_inner_scope
+    valid_use_in_inner_scope,
+    valid_while
 ];
