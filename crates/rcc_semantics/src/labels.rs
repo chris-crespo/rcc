@@ -2,9 +2,11 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use rcc_ast::{
     visit_mut::{self, VisitMut},
-    FunctionDeclaration, GotoStatement, Label, Program,
+    CaseLabeledStatement, DefaultLabeledStatement, FunctionDeclaration, GotoStatement, Label,
+    Program, SwitchStatement,
 };
 use rcc_interner::Symbol;
+use rcc_span::Span;
 
 use crate::{diagnostics, ResolutionContext};
 
@@ -22,6 +24,7 @@ fn resolve_func_decl<'a, 'src>(
 ) {
     let labels = LabelCollector::new(res).collect_labels(decl);
     LabelResolver::new(res, &labels).resolve_labels(decl);
+    SwitchLabelResolver::new(res).resolve_labels(decl);
 }
 
 type Labels = HashMap<Symbol, Label>;
@@ -94,5 +97,110 @@ impl<'a, 'res, 'src> LabelResolver<'a, 'res, 'src> {
 impl<'a, 'res, 'src> VisitMut<'src> for LabelResolver<'a, 'res, 'src> {
     fn visit_goto_stmt(&mut self, stmt: &GotoStatement) {
         self.lookup_label(stmt.label);
+    }
+}
+
+#[derive(Debug)]
+struct CaseLabel {
+    span: Span,
+    id: u64,
+}
+
+#[derive(Debug)]
+struct DefaultLabel {
+    span: Span,
+}
+
+#[derive(Debug, Default)]
+struct SwitchScope {
+    case_labels: Vec<CaseLabel>,
+    default_label: Option<DefaultLabel>,
+}
+
+struct SwitchLabelResolver<'a, 'res, 'src> {
+    res: &'a mut ResolutionContext<'res, 'src>,
+    scope: Option<SwitchScope>,
+}
+
+impl<'a, 'res, 'src> SwitchLabelResolver<'a, 'res, 'src> {
+    fn new(res: &'a mut ResolutionContext<'res, 'src>) -> SwitchLabelResolver<'a, 'res, 'src> {
+        SwitchLabelResolver { res, scope: None }
+    }
+
+    fn scoped(&mut self, f: impl FnOnce(&mut SwitchLabelResolver<'a, 'res, 'src>)) {
+        let scope = SwitchScope::default();
+        let prev_scope = std::mem::replace(&mut self.scope, Some(scope));
+
+        f(self);
+
+        self.scope = prev_scope;
+    }
+
+    fn record_case_labeled_stmt(&mut self, stmt: &CaseLabeledStatement<'src>) {
+        const CASE_LEN: u32 = "case".len() as u32;
+
+        let Some(scope) = &mut self.scope else {
+            return self
+                .res
+                .error(diagnostics::case_label_not_within_switch(stmt.span));
+        };
+
+        let label = CaseLabel {
+            span: Span::sized(stmt.span.start, CASE_LEN),
+            id: stmt.constant.value,
+        };
+
+        if let Some(previous_label) = scope
+            .case_labels
+            .iter()
+            .find(|stmt2| stmt.constant.value == stmt2.id)
+        {
+            let diagnostic = diagnostics::duplicate_case_label(previous_label.span, label.span);
+            return self.res.error(diagnostic);
+        }
+
+        scope.case_labels.push(label)
+    }
+
+    fn record_default_labeled_stmt(&mut self, stmt: &DefaultLabeledStatement<'src>) {
+        const DEFAULT_LEN: u32 = "default".len() as u32;
+
+        let Some(scope) = &mut self.scope else {
+            return self
+                .res
+                .error(diagnostics::case_label_not_within_switch(stmt.span));
+        };
+
+        let label = DefaultLabel {
+            span: Span::sized(stmt.span.start, DEFAULT_LEN),
+        };
+        if let Some(previous_label) = &scope.default_label {
+            let span1 = previous_label.span;
+            let span2 = label.span;
+            let diagnostic = diagnostics::multiple_default_labels(span1, span2);
+            return self.res.error(diagnostic);
+        }
+
+        scope.default_label = Some(label);
+    }
+
+    fn resolve_labels(mut self, decl: &FunctionDeclaration<'src>) {
+        self.visit_func_decl(decl);
+    }
+}
+
+impl<'a, 'res, 'src> VisitMut<'src> for SwitchLabelResolver<'a, 'res, 'src> {
+    fn visit_switch_stmt(&mut self, stmt: &SwitchStatement<'src>) {
+        self.scoped(|v| v.visit_stmt(&stmt.body))
+    }
+
+    fn visit_case_labeled_stmt(&mut self, stmt: &CaseLabeledStatement<'src>) {
+        self.record_case_labeled_stmt(stmt);
+        self.visit_stmt(&stmt.stmt);
+    }
+
+    fn visit_default_labeled_stmt(&mut self, stmt: &DefaultLabeledStatement<'src>) {
+        self.record_default_labeled_stmt(stmt);
+        self.visit_stmt(&stmt.stmt);
     }
 }

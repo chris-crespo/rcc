@@ -99,6 +99,7 @@ snapshot_tests![
     invalid_declare_keyword_as_var,
     invalid_double_operation,
     invalid_duplicate_labels,
+    invalid_duplicate_case_label,
     invalid_empty_if_body,
     invalid_extra_paren,
     invalid_function_name,
@@ -117,6 +118,7 @@ snapshot_tests![
     invalid_missing_semicolon,
     invalid_missing_type,
     invalid_missplaced_semicolon,
+    invalid_multiple_default_labels,
     invalid_nested_missing_const,
     invalid_non_variable_declaration_in_for_loop,
     invalid_out_of_scope,
@@ -131,6 +133,9 @@ snapshot_tests![
     invalid_unfoldable_case_label,
     invalid_use_after_loop,
     invalid_var_case_label,
+];
+
+snapshot_tests![
     valid_add_variables,
     valid_and_false,
     valid_and_shortcircuit,

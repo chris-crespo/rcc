@@ -11,6 +11,10 @@ impl Span {
         Span { start, end }
     }
 
+    pub fn sized(start: u32, size: u32) -> Span {
+        Span { start, end: start + size }
+    }
+
     pub fn length(self) -> u32 {
         self.end - self.start
     }
