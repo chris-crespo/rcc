@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_continue_in_switch.c
+compiler_output:
+  × Continue statement not within a loop
+   ╭─[3:13]
+ 2 │   switch (1) {
+ 3 │     case 1: continue;
+   ·             ─────────
+ 4 │   }
+   ╰────

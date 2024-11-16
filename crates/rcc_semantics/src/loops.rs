@@ -11,6 +11,7 @@ pub fn resolve<'src>(res: &mut ResolutionContext<'_, 'src>, program: &Program<'s
 enum Scope {
     None,
     Loop,
+    Switch
 }
 
 struct LoopResolution<'a, 'res, 'src> {
@@ -38,7 +39,7 @@ impl<'a, 'res, 'src> LoopResolution<'a, 'res, 'src> {
 
 impl<'a, 'res, 'src> VisitMut<'src> for LoopResolution<'a, 'res, 'src> {
     fn visit_break_stmt(&mut self, stmt: &rcc_ast::BreakStatement) {
-        if self.scope != Scope::Loop {
+        if self.scope != Scope::Loop && self.scope != Scope::Switch {
             let diagnostic = diagnostics::break_stmt_not_within_loop_or_switch(stmt.span);
             self.res.error(diagnostic);
         }
@@ -57,6 +58,10 @@ impl<'a, 'res, 'src> VisitMut<'src> for LoopResolution<'a, 'res, 'src> {
 
     fn visit_for_stmt(&mut self, stmt: &rcc_ast::ForStatement<'src>) {
         self.scoped(Scope::Loop, |v| v.visit_stmt(&stmt.body));
+    }
+
+    fn visit_switch_stmt(&mut self, stmt: &rcc_ast::SwitchStatement<'src>) {
+        self.scoped(Scope::Switch, |v| v.visit_stmt(&stmt.body));
     }
 
     fn visit_while_stmt(&mut self, stmt: &rcc_ast::WhileStatement<'src>) {
