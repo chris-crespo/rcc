@@ -480,6 +480,7 @@ name = "rcc_semantics"
 version = "0.1.0"
 dependencies = [
  "miette",
+ "rcc_arena",
  "rcc_ast",
  "rcc_interner",
  "rcc_span",

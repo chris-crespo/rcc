@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use rcc_arena::Arena;
 use rcc_ast::{
     AssignmentOperator, AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression,
-    ForInit, FunctionDeclaration, Identifier, Label, Lvalue, Program, Statement, Type,
-    UnaryOperator, UpdateOperator,
+    ForInit, Identifier, Label, Lvalue, Program, Statement, Type, UnaryOperator, UpdateOperator,
 };
 use rcc_interner::{Interner, Symbol};
 use rcc_lexer::{assignment_tokens, Lexer, LexerCheckpoint, Token, TokenKind};
@@ -129,6 +128,7 @@ struct ParserCheckpoint<'a> {
 
 #[derive(Debug, PartialEq, Eq)]
 enum DeclarationContext {
+    Global,
     BlockItem,
     Loop,
 }
@@ -368,41 +368,27 @@ impl<'a, 'src> Parser<'a, 'src> {
     fn parse_program(&mut self) -> Result<Program<'src>> {
         self.scoped(|p| {
             let span = p.start_span();
-            let func = p.parse_function_declaration()?;
+            let body = p.parse_program_body()?;
 
             let span = p.end_span(span);
-            let program = Program { span, func };
+            let program = Program { span, body };
 
             Ok(program)
         })
     }
 
-    fn parse_function_declaration(&mut self) -> Result<FunctionDeclaration<'src>> {
-        let span = self.start_span();
-        self.expect(TokenKind::Int)?;
+    fn parse_program_body(&mut self) -> Result<rcc_arena::Vec<'src, Declaration<'src>>> {
+        let mut body = self.ast.vec();
 
-        let name = self.parse_id()?;
-        self.declare_function(&name)?;
+        while !self.at(TokenKind::Eof) {
+            let decl = self.parse_decl()?;
+            body.push(decl);
+        }
 
-        self.scoped(|p| {
-            p.expect(TokenKind::LeftParen)?;
-            p.expect(TokenKind::Void)?;
-            p.expect(TokenKind::RightParen)?;
-
-            let body = p.parse_block_impl()?;
-
-            let span = p.end_span(span);
-            let decl = p.ast.decl_func(span, name, body);
-
-            Ok(decl)
-        })
+        Ok(body)
     }
 
     fn parse_block(&mut self) -> Result<Block<'src>> {
-        self.scoped(|p| p.parse_block_impl())
-    }
-
-    fn parse_block_impl(&mut self) -> Result<Block<'src>> {
         let mut items = self.ast.vec();
         let span = self.start_span();
 
@@ -442,6 +428,41 @@ impl<'a, 'src> Parser<'a, 'src> {
         }
 
         None
+    }
+
+    fn parse_decl(&mut self) -> Result<Declaration<'src>> {
+        if self.curr_kind() == TokenKind::Typedef {
+            let decl = self.parse_decl_typedef(DeclarationContext::Global)?;
+            return Ok(decl);
+        }
+
+        self.parse_decl_func()
+    }
+
+    fn parse_decl_func(&mut self) -> Result<Declaration<'src>> {
+        let span = self.start_span();
+        self.expect(TokenKind::Int)?;
+
+        let name = self.parse_id()?;
+        self.declare_function(&name)?;
+
+        self.scoped(|p| {
+            p.expect(TokenKind::LeftParen)?;
+            p.expect(TokenKind::Void)?;
+            p.expect(TokenKind::RightParen)?;
+
+            let body = if p.eat(TokenKind::Semicolon) {
+                None
+            } else {
+                let block = p.parse_block()?;
+                Some(block)
+            };
+
+            let span = p.end_span(span);
+            let decl = p.ast.decl_func(span, name, body);
+
+            Ok(decl)
+        })
     }
 
     fn parse_decl_typedef(&mut self, ctx: DeclarationContext) -> Result<Declaration<'src>> {

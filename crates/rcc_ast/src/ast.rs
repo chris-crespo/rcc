@@ -5,14 +5,7 @@ use rcc_span::Span;
 #[derive(Debug)]
 pub struct Program<'a> {
     pub span: Span,
-    pub func: FunctionDeclaration<'a>,
-}
-
-#[derive(Debug)]
-pub struct FunctionDeclaration<'a> {
-    pub span: Span,
-    pub name: Identifier,
-    pub body: Block<'a>,
+    pub body: Vec<'a, Declaration<'a>>,
 }
 
 #[derive(Debug)]
@@ -29,8 +22,16 @@ pub enum BlockItem<'a> {
 
 #[derive(Debug)]
 pub enum Declaration<'a> {
+    Function(&'a FunctionDeclaration<'a>),
     Typedef(&'a TypedefDeclaration<'a>),
     Variable(&'a VariableDeclaration<'a>),
+}
+
+#[derive(Debug)]
+pub struct FunctionDeclaration<'a> {
+    pub span: Span,
+    pub name: Identifier,
+    pub body: Option<Block<'a>>,
 }
 
 #[derive(Debug)]

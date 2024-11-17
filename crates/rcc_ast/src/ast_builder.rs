@@ -30,17 +30,8 @@ impl<'a> AstBuilder<'a> {
         rcc_arena::Vec::new_in(self.arena)
     }
 
-    pub fn program(&self, span: Span, func: FunctionDeclaration<'a>) -> Program<'a> {
-        Program { span, func }
-    }
-
-    pub fn decl_func(
-        &self,
-        span: Span,
-        name: Identifier,
-        body: Block<'a>,
-    ) -> FunctionDeclaration<'a> {
-        FunctionDeclaration { span, name, body }
+    pub fn program(&self, span: Span, body: rcc_arena::Vec<'a, Declaration<'a>>) -> Program<'a> {
+        Program { span, body }
     }
 
     pub fn block(&self, span: Span, items: rcc_arena::Vec<'a, BlockItem<'a>>) -> Block<'a> {
@@ -53,6 +44,25 @@ impl<'a> AstBuilder<'a> {
 
     pub fn block_item_stmt(&self, stmt: Statement<'a>) -> BlockItem<'a> {
         BlockItem::Statement(self.alloc(stmt))
+    }
+
+    pub fn decl_func(
+        &self,
+        span: Span,
+        name: Identifier,
+        body: Option<Block<'a>>,
+    ) -> Declaration<'a> {
+        let func_decl = self.func_decl(span, name, body);
+        Declaration::Function(self.alloc(func_decl))
+    }
+
+    pub fn func_decl(
+        &self,
+        span: Span,
+        name: Identifier,
+        body: Option<Block<'a>>,
+    ) -> FunctionDeclaration<'a> {
+        FunctionDeclaration { span, name, body }
     }
 
     pub fn decl_typedef(&self, span: Span, ty: Type<'a>, id: Identifier) -> Declaration<'a> {

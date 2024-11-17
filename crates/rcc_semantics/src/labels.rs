@@ -2,8 +2,8 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use rcc_ast::{
     visit_mut::{self, VisitMut},
-    CaseLabeledStatement, DefaultLabeledStatement, FunctionDeclaration, GotoStatement, Label,
-    Program, SwitchStatement,
+    CaseLabeledStatement, Declaration, DefaultLabeledStatement, FunctionDeclaration, GotoStatement,
+    Label, Program, SwitchStatement,
 };
 use rcc_interner::Symbol;
 use rcc_span::Span;
@@ -15,10 +15,20 @@ pub fn resolve<'a, 'src>(res: &'a mut ResolutionContext<'_, 'src>, program: &'a 
 }
 
 fn resolve_program<'a, 'src>(res: &'a mut ResolutionContext<'_, 'src>, program: &'a Program<'src>) {
-    resolve_func_decl(res, &program.func)
+    for decl in &program.body {
+        resolve_decl(res, decl);
+    }
 }
 
-fn resolve_func_decl<'a, 'src>(
+fn resolve_decl<'a, 'src>(res: &'a mut ResolutionContext<'_, 'src>, decl: &'a Declaration<'src>) {
+    match decl {
+        Declaration::Function(decl) => resolve_function_decl(res, decl),
+        Declaration::Typedef(_) => {},
+        Declaration::Variable(_) => {},
+    }
+}
+
+fn resolve_function_decl<'a, 'src>(
     res: &'a mut ResolutionContext<'_, 'src>,
     decl: &'a FunctionDeclaration<'src>,
 ) {
@@ -57,7 +67,7 @@ impl<'a, 'res, 'src> LabelCollector<'a, 'res, 'src> {
     }
 
     fn collect_labels(mut self, decl: &FunctionDeclaration<'src>) -> Labels {
-        self.visit_func_decl(decl);
+        self.visit_function_decl(decl);
         self.labels
     }
 }
@@ -90,7 +100,7 @@ impl<'a, 'res, 'src> LabelResolver<'a, 'res, 'src> {
     }
 
     fn resolve_labels(mut self, decl: &FunctionDeclaration<'src>) {
-        self.visit_func_decl(decl);
+        self.visit_function_decl(decl);
     }
 }
 
@@ -186,7 +196,7 @@ impl<'a, 'res, 'src> SwitchLabelResolver<'a, 'res, 'src> {
     }
 
     fn resolve_labels(mut self, decl: &FunctionDeclaration<'src>) {
-        self.visit_func_decl(decl);
+        self.visit_function_decl(decl);
     }
 }
 

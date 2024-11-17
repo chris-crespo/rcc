@@ -9,7 +9,7 @@ pub trait VisitMut<'src>: Sized {
     }
 
     #[inline]
-    fn visit_func_decl(&mut self, decl: &FunctionDeclaration<'src>) {
+    fn visit_function_decl(&mut self, decl: &FunctionDeclaration<'src>) {
         walk_func_decl(self, decl);
     }
 
@@ -185,11 +185,15 @@ pub trait VisitMut<'src>: Sized {
 }
 
 pub fn walk_program<'src, V: VisitMut<'src>>(v: &mut V, program: &Program<'src>) {
-    v.visit_func_decl(&program.func);
+    for decl in &program.body {
+        v.visit_decl(decl);
+    }
 }
 
 pub fn walk_func_decl<'src, V: VisitMut<'src>>(v: &mut V, decl: &FunctionDeclaration<'src>) {
-    v.visit_block(&decl.body)
+    if let Some(body) = &decl.body {
+        v.visit_block(body)
+    }
 }
 
 pub fn walk_block<'src, V: VisitMut<'src>>(v: &mut V, block: &Block<'src>) {
@@ -207,6 +211,7 @@ pub fn walk_block_item<'src, V: VisitMut<'src>>(v: &mut V, block_item: &BlockIte
 
 pub fn walk_decl<'src, V: VisitMut<'src>>(v: &mut V, decl: &Declaration<'src>) {
     match decl {
+        Declaration::Function(decl) => v.visit_function_decl(decl),
         Declaration::Typedef(decl) => v.visit_typedef_decl(decl),
         Declaration::Variable(decl) => v.visit_variable_decl(decl),
     }

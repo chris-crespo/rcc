@@ -5,6 +5,7 @@ use crate::{Declaration, Expression, NumberLiteral};
 impl<'a> Declaration<'a> {
     pub fn span(&self) -> Span {
         match self {
+            Declaration::Function(decl) => decl.span,
             Declaration::Typedef(decl) => decl.span,
             Declaration::Variable(decl) => decl.span,
         }

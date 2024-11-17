@@ -127,21 +127,36 @@ pub fn lower_to_tac(program: &ast::Program) -> tac::Program {
 }
 
 fn lower_program(ctx: &mut LoweringContext, program: &ast::Program) -> tac::Program {
-    let func = lower_decl_func(ctx, &program.func);
+    let func = program
+        .body
+        .iter()
+        .find_map(|decl| match decl {
+            ast::Declaration::Function(decl) if decl.body.is_some() => {
+                lower_decl_func(ctx, decl)
+            }
+            _ => None,
+        })
+        .unwrap();
+
     tac::Program { func }
 }
 
 fn lower_decl_func(
     ctx: &mut LoweringContext,
     func: &ast::FunctionDeclaration,
-) -> tac::FunctionDeclaration {
-    lower_block(ctx, &func.body);
+) -> Option<tac::FunctionDeclaration> {
+    let Some(body) = &func.body else {
+        return None;
+    };
+
+    lower_block(ctx, body);
     ctx.instrs.ret_zero();
 
     let name = map_ast_id(&func.name);
     let body = ctx.instrs.take();
 
-    tac::FunctionDeclaration { name, body }
+    let decl = tac::FunctionDeclaration { name, body };
+    Some(decl)
 }
 
 fn lower_block(ctx: &mut LoweringContext, block: &ast::Block) {
@@ -161,6 +176,7 @@ fn lower_block_item(ctx: &mut LoweringContext, block_item: &ast::BlockItem) {
 
 fn lower_decl(ctx: &mut LoweringContext, decl: &ast::Declaration) {
     match decl {
+        ast::Declaration::Function(decl) => todo!(),
         ast::Declaration::Typedef(_) => {}
         ast::Declaration::Variable(decl) => lower_var_decl(ctx, decl),
     }
@@ -362,7 +378,8 @@ fn lower_switch_stmt(ctx: &mut LoweringContext, stmt: &ast::SwitchStatement) {
     for &(constant, label) in &labels.case_labels {
         let constant = tac::Constant { value: constant };
         let rhs = tac::Value::Constant(constant);
-        ctx.instrs.binary(tac::BinaryOperator::Equal, value, rhs, temp_var);
+        ctx.instrs
+            .binary(tac::BinaryOperator::Equal, value, rhs, temp_var);
 
         let value = tac::Value::Variable(temp_var);
         ctx.instrs.jmpnz(value, label);
