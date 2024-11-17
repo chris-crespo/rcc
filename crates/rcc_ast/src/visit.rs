@@ -1,5 +1,10 @@
 use crate::{
-    AssignmentExpression, BinaryExpression, Block, BlockItem, BreakStatement, CaseLabeledStatement, ConditionalExpression, ContinueStatement, Declaration, DefaultLabeledStatement, DoStatement, EmptyStatement, Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement, Identifier, IdentifierLabeledStatement, IfStatement, Label, LabeledStatement, Lvalue, NumberLiteral, Program, ReturnStatement, Statement, SwitchStatement, Type, TypedefDeclaration, UnaryExpression, UpdateExpression, VariableDeclaration, WhileStatement
+    AssignmentExpression, BinaryExpression, Block, BlockItem, BreakStatement, CaseLabeledStatement,
+    ConditionalExpression, ContinueStatement, Declaration, DefaultLabeledStatement, DoStatement,
+    EmptyStatement, Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration,
+    GotoStatement, Identifier, IdentifierLabeledStatement, IfStatement, Label, LabeledStatement,
+    Lvalue, NumberLiteral, Program, ReturnStatement, Statement, SwitchStatement, Type,
+    TypedefDeclaration, UnaryExpression, UpdateExpression, VariableDeclaration, WhileStatement,
 };
 
 pub trait Visit<'src>: Sized {
@@ -266,6 +271,8 @@ pub fn walk_for_stmt<'src, V: Visit<'src>>(v: &V, stmt: &ForStatement<'src>) {
     if let Some(post) = &stmt.post {
         v.visit_expr(post);
     }
+
+    v.visit_stmt(&stmt.body);
 }
 
 pub fn walk_for_init<'src, V: Visit<'src>>(v: &V, init: &ForInit<'src>) {
@@ -297,11 +304,14 @@ pub fn walk_labeled_stmt<'src, V: Visit<'src>>(v: &V, stmt: &LabeledStatement<'s
 }
 
 pub fn walk_case_labeled_stmt<'src, V: Visit<'src>>(v: &V, stmt: &CaseLabeledStatement<'src>) {
-    v.visit_number_lit(&stmt.constant);
+    v.visit_number_lit(stmt.constant);
     v.visit_stmt(&stmt.stmt);
 }
 
-pub fn walk_default_labeled_stmt<'src, V: Visit<'src>>(v: &V, stmt: &DefaultLabeledStatement<'src>) {
+pub fn walk_default_labeled_stmt<'src, V: Visit<'src>>(
+    v: &V,
+    stmt: &DefaultLabeledStatement<'src>,
+) {
     v.visit_stmt(&stmt.stmt);
 }
 

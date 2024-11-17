@@ -271,6 +271,8 @@ pub fn walk_for_stmt<'src, V: VisitMut<'src>>(v: &mut V, stmt: &ForStatement<'sr
     if let Some(post) = &stmt.post {
         v.visit_expr(post);
     }
+
+    v.visit_stmt(&stmt.body)
 }
 
 pub fn walk_for_init<'src, V: VisitMut<'src>>(v: &mut V, init: &ForInit<'src>) {
