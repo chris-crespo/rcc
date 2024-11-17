@@ -159,6 +159,7 @@ impl<'src> Lexer<'src> {
                     }
                 }
                 ':' => self.make_token(TokenKind::Colon),
+                ',' => self.make_token(TokenKind::Comma),
                 '|' => {
                     if self.eat_char('|') {
                         self.make_token(TokenKind::Pipe2)
