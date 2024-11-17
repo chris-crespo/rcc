@@ -3,7 +3,7 @@ source: crates/rcc_tests/tests/mod.rs
 ---
 source: invalid_missing_type.c
 compiler_output:
-  × Missing return type
+  × Missing type in declaration
    ╭─[1:1]
  1 │ main(void) {
    · ────

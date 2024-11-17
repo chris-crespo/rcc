@@ -126,6 +126,13 @@ struct ParserCheckpoint<'a> {
     prev_token_end: u32,
 }
 
+#[derive(Debug)]
+struct DeclarationSpecifiers<'a> {
+    span: Span,
+    ty: Option<Type<'a>>,
+    id: Identifier,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum DeclarationContext {
     Global,
@@ -410,29 +417,57 @@ impl<'a, 'src> Parser<'a, 'src> {
             return Some(decl);
         }
 
-        if self.lookahead(|p| p.parse_ty()).is_ok() {
-            let decl = self.parse_decl_var(ctx);
-            return Some(decl);
+        if self.lookahead(|p| p.parse_ty()).is_err() {
+            return None;
         }
 
-        None
+        let decl_specs = match self.parse_decl_specs() {
+            Ok(decl_specs) => decl_specs,
+            Err(err) => return Some(Err(err))
+        };
+        
+        let decl = if self.at(TokenKind::LeftParen) {
+            self.parse_decl_func(decl_specs, ctx)
+        } else {
+            self.parse_decl_var(decl_specs, ctx)
+        };
+
+        Some(decl)
     }
 
     fn parse_decl(&mut self) -> Result<Declaration<'src>> {
+        const CTX: DeclarationContext = DeclarationContext::Global;
+
         if self.curr_kind() == TokenKind::Typedef {
-            let decl = self.parse_decl_typedef(DeclarationContext::Global)?;
+            let decl = self.parse_decl_typedef(CTX)?;
             return Ok(decl);
         }
 
-        self.parse_decl_func()
+        let decl_specs = self.parse_decl_specs()?;
+        if self.at(TokenKind::LeftParen) {
+            self.parse_decl_func(decl_specs, CTX)
+        } else {
+            self.parse_decl_var(decl_specs, CTX)
+        }
     }
 
-    fn parse_decl_func(&mut self) -> Result<Declaration<'src>> {
+    fn parse_decl_specs(&mut self) -> Result<DeclarationSpecifiers<'src>> {
         let span = self.start_span();
         let ty = self.try_parse(|p| p.parse_ty());
+        let id = self.parse_id()?;
 
-        let name = self.parse_id()?;
-        self.declare_variable(&name)?;
+        let span = self.end_span(span);
+        let specs = DeclarationSpecifiers { span, ty, id };
+
+        Ok(specs)
+    }
+
+    fn parse_decl_func(
+        &mut self,
+        specs: DeclarationSpecifiers<'src>,
+        ctx: DeclarationContext,
+    ) -> Result<Declaration<'src>> {
+        self.declare_variable(&specs.id)?;
 
         self.scoped(|p| {
             p.expect(TokenKind::LeftParen)?;
@@ -446,12 +481,12 @@ impl<'a, 'src> Parser<'a, 'src> {
                 Some(block)
             };
 
-            let Some(ty) = ty else {
-                return Err(diagnostics::missing_return_type(name.span));
+            let Some(ty) = specs.ty else {
+                return Err(diagnostics::missing_type(specs.id.span));
             };
 
-            let span = p.end_span(span);
-            let decl = p.ast.decl_func(span, ty, name, body);
+            let span = p.end_span(specs.span);
+            let decl = p.ast.decl_func(span, ty, specs.id, body);
 
             Ok(decl)
         })
@@ -476,11 +511,12 @@ impl<'a, 'src> Parser<'a, 'src> {
         Ok(decl)
     }
 
-    fn parse_decl_var(&mut self, ctx: DeclarationContext) -> Result<Declaration<'src>> {
-        let span = self.start_span();
-        let ty = self.parse_ty()?;
-        let id = self.parse_id()?;
-        self.declare_variable(&id)?;
+    fn parse_decl_var(
+        &mut self,
+        specs: DeclarationSpecifiers<'src>,
+        ctx: DeclarationContext,
+    ) -> Result<Declaration<'src>> {
+        self.declare_variable(&specs.id)?;
 
         let expr = if self.eat(TokenKind::Eq) {
             let expr = self.parse_expr()?;
@@ -489,12 +525,16 @@ impl<'a, 'src> Parser<'a, 'src> {
             None
         };
 
-        if ctx == DeclarationContext::BlockItem {
+        if ctx != DeclarationContext::Loop {
             self.expect(TokenKind::Semicolon)?;
         }
 
-        let span = self.end_span(span);
-        let var_decl = self.ast.decl_var(span, ty, id, expr);
+        let Some(ty) = specs.ty else {
+            return Err(diagnostics::missing_type(specs.id.span));
+        };
+
+        let span = self.end_span(specs.span);
+        let var_decl = self.ast.decl_var(span, ty, specs.id, expr);
 
         Ok(var_decl)
     }

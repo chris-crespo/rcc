@@ -50,8 +50,8 @@ pub fn non_function_call(span: Span) -> miette::Report {
         .into()
 }
 
-pub fn missing_return_type(span: Span) -> miette::Report {
-    MietteDiagnostic::new("Missing return type")
+pub fn missing_type(span: Span) -> miette::Report {
+    MietteDiagnostic::new("Missing type in declaration")
         .with_label(span)
         .into()
 }
