@@ -15,7 +15,7 @@ This compiler is not intended to match the capabilities of those such as `gcc` o
 - [x] If Statements and Conditional Expressions
 - [x] Compound Statements
 - [x] Loops
-- [ ] Functions
+- [ ] Functions ([*in-progress*](https://github.com/chris-crespo/rcc/tree/ch9))
 - [ ] File Scope Variable Declarations and Storage-Class Specifiers
 - [ ] Long Integers
 - [ ] Unsigned Integers
