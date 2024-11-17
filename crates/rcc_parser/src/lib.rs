@@ -473,7 +473,8 @@ impl<'a, 'src> Parser<'a, 'src> {
         let id = self.parse_id()?;
         self.declare_typedef(&id);
 
-        if ctx == DeclarationContext::BlockItem {
+        // Global or block level.
+        if ctx != DeclarationContext::Loop {
             self.expect(TokenKind::Semicolon)?;
         }
 
