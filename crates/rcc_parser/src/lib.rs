@@ -384,6 +384,10 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_block(&mut self) -> Result<Block<'src>> {
+        self.scoped(|p| p.parse_block_impl())
+    }
+
+    fn parse_block_impl(&mut self) -> Result<Block<'src>> {
         let mut items = self.ast.vec();
         let span = self.start_span();
 
