@@ -139,15 +139,15 @@ impl<'a, 'res, 'src> SwitchLabelResolver<'a, 'res, 'src> {
     fn record_case_labeled_stmt(&mut self, stmt: &CaseLabeledStatement<'src>) {
         const CASE_LEN: u32 = "case".len() as u32;
 
-        let Some(scope) = &mut self.scope else {
-            return self
-                .res
-                .error(diagnostics::case_label_not_within_switch(stmt.span));
-        };
-
         let label = CaseLabel {
             span: Span::sized(stmt.span.start, CASE_LEN),
             id: stmt.constant.value,
+        };
+
+        let Some(scope) = &mut self.scope else {
+            return self
+                .res
+                .error(diagnostics::case_label_not_within_switch(label.span));
         };
 
         if let Some(previous_label) = scope
