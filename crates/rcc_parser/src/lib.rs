@@ -303,18 +303,6 @@ impl<'a, 'src> Parser<'a, 'src> {
             .expect("scopes should never be empty")
     }
 
-    fn declare_function(&mut self, id: &Identifier) -> Result<()> {
-        let curr_scope = self.curr_scope_mut();
-        if let Some(&span) = curr_scope.functions.get(&id.symbol) {
-            let source_id = self.interner.get(id.symbol);
-            return Err(diagnostics::redefined(source_id, span, id.span));
-        }
-
-        curr_scope.functions.insert(id.symbol, id.span);
-
-        Ok(())
-    }
-
     fn declare_typedef(&mut self, id: &Identifier) {
         self.curr_scope_mut().typedefs.insert(id.symbol, id.span);
     }
@@ -444,7 +432,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         let ty = self.try_parse(|p| p.parse_ty());
 
         let name = self.parse_id()?;
-        self.declare_function(&name)?;
+        self.declare_variable(&name)?;
 
         self.scoped(|p| {
             p.expect(TokenKind::LeftParen)?;
