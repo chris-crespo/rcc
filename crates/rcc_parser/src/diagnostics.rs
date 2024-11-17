@@ -43,3 +43,9 @@ pub fn unfoldable_case_label(span: Span) -> miette::Report {
         .with_label(span)
         .into()
 }
+
+pub fn non_function_call(span: Span) -> miette::Report {
+    MietteDiagnostic::new("Called object is not a function")
+        .with_label(span)
+        .into()
+}

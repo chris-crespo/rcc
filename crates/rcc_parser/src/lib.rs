@@ -4,7 +4,7 @@ use rcc_arena::Arena;
 use rcc_ast::{
     AssignmentOperator, AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression,
     ForInit, FunctionDeclaration, Identifier, Label, Lvalue, Program, Statement, Type,
-    UnaryOperator, UpdateOperator, VariableDeclaration,
+    UnaryOperator, UpdateOperator,
 };
 use rcc_interner::{Interner, Symbol};
 use rcc_lexer::{assignment_tokens, Lexer, LexerCheckpoint, Token, TokenKind};
@@ -114,7 +114,7 @@ impl From<TokenKind> for Precedence {
             TokenKind::Lt2 | TokenKind::Gt2 => Precedence::Shift,
             TokenKind::Plus | TokenKind::Minus => Precedence::Term,
             TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Precedence::Factor,
-            TokenKind::Plus2 | TokenKind::Minus2 => Precedence::Postfix,
+            TokenKind::Plus2 | TokenKind::Minus2 | TokenKind::LeftParen => Precedence::Postfix,
             _ => Precedence::None,
         }
     }
@@ -797,6 +797,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         match self.curr_kind() {
             kind if kind.is_assignment_op() => self.parse_expr_assignment(lhs),
             kind if kind.is_binary_op() => self.parse_expr_binary(lhs),
+            TokenKind::LeftParen => self.parse_expr_call(lhs),
             TokenKind::Question => self.parse_expr_conditional(lhs),
             TokenKind::Plus2 | TokenKind::Minus2 => self.parse_expr_update_postfix(lhs),
             _ => Err(self.unexpected()),
@@ -831,6 +832,41 @@ impl<'a, 'src> Parser<'a, 'src> {
         let expr = self.fold_binary_expr(span, op, lhs, rhs);
 
         Ok(expr)
+    }
+
+    fn parse_expr_call(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
+        let id = match lhs {
+            Expression::Identifier(&id) => id,
+            _ => return Err(diagnostics::non_function_call(lhs.span())),
+        };
+
+        let args = self.parse_expr_call_args()?;
+
+        let span = self.end_span(lhs.span());
+        let expr = self.ast.expr_call(span, id, args);
+
+        Ok(expr)
+    }
+
+    fn parse_expr_call_args(&mut self) -> Result<rcc_arena::Vec<'src, Expression<'src>>> {
+        let mut args = self.ast.vec();
+        self.bump(); // Skip `(`
+
+        if self.eat(TokenKind::RightParen) {
+            return Ok(args);
+        }
+
+        loop {
+            let expr = self.parse_expr()?;
+            args.push(expr);
+
+            if !self.eat(TokenKind::Comma) {
+                self.expect(TokenKind::RightParen)?;
+                break;
+            }
+        }
+
+        Ok(args)
     }
 
     fn parse_expr_conditional(&mut self, condition: Expression<'src>) -> Result<Expression<'src>> {

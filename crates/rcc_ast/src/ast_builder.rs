@@ -3,10 +3,10 @@ use rcc_span::Span;
 
 use crate::{
     AliasType, AssignmentExpression, AssignmentOperator, BinaryExpression, BinaryOperator, Block,
-    BlockItem, BreakStatement, CaseLabeledStatement, ConditionalExpression, ContinueStatement,
-    Declaration, DefaultLabeledStatement, DoStatement, EmptyStatement, Expression,
-    ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement, Identifier,
-    IdentifierLabeledStatement, IfStatement, IntType, Label, LabeledStatement, Lvalue,
+    BlockItem, BreakStatement, CallExpression, CaseLabeledStatement, ConditionalExpression,
+    ContinueStatement, Declaration, DefaultLabeledStatement, DoStatement, EmptyStatement,
+    Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement,
+    Identifier, IdentifierLabeledStatement, IfStatement, IntType, Label, LabeledStatement, Lvalue,
     NumberLiteral, Program, ReturnStatement, Statement, SwitchStatement, Type, TypedefDeclaration,
     UnaryExpression, UnaryOperator, UpdateExpression, UpdateOperator, VariableDeclaration,
     WhileStatement,
@@ -375,6 +375,25 @@ impl<'a> AstBuilder<'a> {
         rhs: Expression<'a>,
     ) -> BinaryExpression<'a> {
         BinaryExpression { span, op, lhs, rhs }
+    }
+
+    pub fn expr_call(
+        &self,
+        span: Span,
+        id: Identifier,
+        args: rcc_arena::Vec<'a, Expression<'a>>,
+    ) -> Expression<'a> {
+        let call_expr = self.call_expr(span, id, args);
+        Expression::Call(self.alloc(call_expr))
+    }
+
+    pub fn call_expr(
+        &self,
+        span: Span,
+        id: Identifier,
+        args: rcc_arena::Vec<'a, Expression<'a>>,
+    ) -> CallExpression<'a> {
+        CallExpression { span, id, args }
     }
 
     pub fn expr_conditional(
