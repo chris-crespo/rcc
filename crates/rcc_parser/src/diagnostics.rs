@@ -49,3 +49,9 @@ pub fn non_function_call(span: Span) -> miette::Report {
         .with_label(span)
         .into()
 }
+
+pub fn missing_return_type(span: Span) -> miette::Report {
+    MietteDiagnostic::new("Missing return type")
+        .with_label(span)
+        .into()
+}

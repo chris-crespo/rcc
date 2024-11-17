@@ -179,6 +179,7 @@ snapshot_tests![
     valid_for_shadow,
     valid_do_while,
     valid_do_while_break_immediate,
+    valid_global_typedef,
     valid_goto_label_main,
     valid_goto_label_main_2,
     valid_hidden_then_visible,

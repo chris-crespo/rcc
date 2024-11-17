@@ -49,20 +49,22 @@ impl<'a> AstBuilder<'a> {
     pub fn decl_func(
         &self,
         span: Span,
+        ty: Type<'a>,
         name: Identifier,
         body: Option<Block<'a>>,
     ) -> Declaration<'a> {
-        let func_decl = self.func_decl(span, name, body);
+        let func_decl = self.func_decl(span, ty, name, body);
         Declaration::Function(self.alloc(func_decl))
     }
 
     pub fn func_decl(
         &self,
         span: Span,
+        ty: Type<'a>,
         name: Identifier,
         body: Option<Block<'a>>,
     ) -> FunctionDeclaration<'a> {
-        FunctionDeclaration { span, name, body }
+        FunctionDeclaration { span, ty, name, body }
     }
 
     pub fn decl_typedef(&self, span: Span, ty: Type<'a>, id: Identifier) -> Declaration<'a> {

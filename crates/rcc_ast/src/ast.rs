@@ -30,6 +30,7 @@ pub enum Declaration<'a> {
 #[derive(Debug)]
 pub struct FunctionDeclaration<'a> {
     pub span: Span,
+    pub ty: Type<'a>,
     pub name: Identifier,
     pub body: Option<Block<'a>>,
 }

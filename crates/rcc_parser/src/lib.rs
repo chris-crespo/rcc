@@ -441,7 +441,7 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn parse_decl_func(&mut self) -> Result<Declaration<'src>> {
         let span = self.start_span();
-        self.expect(TokenKind::Int)?;
+        let ty = self.try_parse(|p| p.parse_ty());
 
         let name = self.parse_id()?;
         self.declare_function(&name)?;
@@ -458,8 +458,12 @@ impl<'a, 'src> Parser<'a, 'src> {
                 Some(block)
             };
 
+            let Some(ty) = ty else {
+                return Err(diagnostics::missing_return_type(name.span));
+            };
+
             let span = p.end_span(span);
-            let decl = p.ast.decl_func(span, name, body);
+            let decl = p.ast.decl_func(span, ty, name, body);
 
             Ok(decl)
         })
