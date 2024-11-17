@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_switch_default_fallthrough.c
+exit_status: 0

@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_switch_missing_condition.c
+compiler_output:
+  × Expected `(` but found `{`
+   ╭─[2:12]
+ 1 │ int main(void) {
+ 2 │     switch {
+   ·            ┬
+   ·            ╰── `(` expected
+ 3 │         return 0;
+   ╰────

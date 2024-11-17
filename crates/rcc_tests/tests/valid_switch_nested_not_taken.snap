@@ -1,0 +1,5 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: valid_switch_nested_not_taken.c
+exit_status: 2

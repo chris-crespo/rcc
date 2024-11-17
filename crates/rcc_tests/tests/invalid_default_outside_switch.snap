@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_default_outside_switch.c
+compiler_output:
+  × Default label not within a switch statement
+   ╭─[3:9]
+ 2 │     {
+ 3 │         default: return 0;
+   ·         ───────
+ 4 │     }
+   ╰────

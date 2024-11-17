@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_switch_redefinitions.c
+compiler_output:
+  × Redefined `b`
+   ╭─[8:17]
+ 7 │         case 2:;
+ 8 │             int b = 11;
+   ·                 ─
+ 9 │             break;
+   ╰────

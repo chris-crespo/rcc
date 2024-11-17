@@ -4,71 +4,15 @@ use instrs::Instrs;
 use rcc_ast as ast;
 use rcc_interner::Symbol;
 use rcc_tac as tac;
+use switch::{SwitchLabels, SwitchLabelsCollector};
 
 mod instrs;
+mod switch;
 
 #[derive(Debug, Default)]
 struct BlockScope {
     /// Maps user defined variables to tac variables.
     var_map: HashMap<Symbol, tac::Variable>,
-}
-
-#[derive(Debug)]
-struct LoopScope {
-    start_label: tac::Label,
-    break_label: tac::Label,
-    continue_label: tac::Label,
-    end_label: tac::Label,
-}
-
-impl LoopScope {
-    fn dummy() -> LoopScope {
-        let dummy_label = tac::Label { id: 0 };
-        LoopScope {
-            start_label: dummy_label,
-            break_label: dummy_label,
-            continue_label: dummy_label,
-            end_label: dummy_label,
-        }
-    }
-
-    fn do_loop(ctx: &mut LoweringContext) -> LoopScope {
-        let start_label = ctx.label();
-        let continue_label = ctx.label();
-        let break_label = ctx.label();
-
-        LoopScope {
-            start_label,
-            break_label,
-            continue_label,
-            end_label: break_label,
-        }
-    }
-
-    fn for_loop(ctx: &mut LoweringContext) -> LoopScope {
-        let start_label = ctx.label();
-        let continue_label = ctx.label();
-        let break_label = ctx.label();
-
-        LoopScope {
-            start_label,
-            break_label,
-            continue_label,
-            end_label: break_label,
-        }
-    }
-
-    fn while_loop(ctx: &mut LoweringContext) -> LoopScope {
-        let continue_label = ctx.label();
-        let break_label = ctx.label();
-
-        LoopScope {
-            start_label: continue_label,
-            break_label,
-            continue_label,
-            end_label: break_label,
-        }
-    }
 }
 
 struct LoweringContext {
@@ -78,19 +22,26 @@ struct LoweringContext {
     /// Maps user defined labels to tac labels.
     label_map: HashMap<Symbol, tac::Label>,
     scopes: Vec<BlockScope>,
-    loop_scope: LoopScope,
+
+    break_label: tac::Label,
+    continue_label: tac::Label,
+    switch_labels: SwitchLabels,
 
     instrs: Instrs,
 }
 
 impl LoweringContext {
     fn new() -> LoweringContext {
+        let dummy_label = tac::Label { id: 0 };
+
         LoweringContext {
             vars: 0,
             labels: 0,
             label_map: HashMap::new(),
             scopes: Vec::new(),
-            loop_scope: LoopScope::dummy(),
+            break_label: dummy_label,
+            continue_label: dummy_label,
+            switch_labels: SwitchLabels::new(dummy_label),
             instrs: Instrs::new(),
         }
     }
@@ -127,10 +78,29 @@ impl LoweringContext {
         self.scopes.pop();
     }
 
-    fn loop_scoped(&mut self, scope: LoopScope, f: impl FnOnce(&mut LoweringContext)) {
-        let prev_loop_scope = std::mem::replace(&mut self.loop_scope, scope);
+    fn loop_scoped(
+        &mut self,
+        break_label: tac::Label,
+        continue_label: tac::Label,
+        f: impl FnOnce(&mut LoweringContext),
+    ) {
+        let prev_break_label = std::mem::replace(&mut self.break_label, break_label);
+        let prev_continue_label = std::mem::replace(&mut self.continue_label, continue_label);
+
         f(self);
-        self.loop_scope = prev_loop_scope;
+
+        self.break_label = prev_break_label;
+        self.continue_label = prev_continue_label;
+    }
+
+    fn switch_scoped(&mut self, labels: SwitchLabels, f: impl FnOnce(&mut LoweringContext)) {
+        let prev_break_label = std::mem::replace(&mut self.break_label, labels.end_label);
+        let prev_switch_labels = std::mem::replace(&mut self.switch_labels, labels);
+
+        f(self);
+
+        self.break_label = prev_break_label;
+        self.switch_labels = prev_switch_labels;
     }
 
     fn label(&mut self) -> tac::Label {
@@ -218,31 +188,34 @@ fn lower_stmt(ctx: &mut LoweringContext, stmt: &ast::Statement) {
         ast::Statement::If(stmt) => lower_if_stmt(ctx, stmt),
         ast::Statement::Labeled(stmt) => lower_labeled_stmt(ctx, stmt),
         ast::Statement::Return(stmt) => lower_return_stmt(ctx, stmt),
-        ast::Statement::Switch(stmt) => todo!(),
+        ast::Statement::Switch(stmt) => lower_switch_stmt(ctx, stmt),
         ast::Statement::While(stmt) => lower_while_stmt(ctx, stmt),
         ast::Statement::Empty(_) => {}
     }
 }
 
 fn lower_break_stmt(ctx: &mut LoweringContext, _: &ast::BreakStatement) {
-    ctx.instrs.jmp(ctx.loop_scope.break_label);
+    ctx.instrs.jmp(ctx.break_label);
 }
 
 fn lower_continue_stmt(ctx: &mut LoweringContext, _: &ast::ContinueStatement) {
-    ctx.instrs.jmp(ctx.loop_scope.continue_label);
+    ctx.instrs.jmp(ctx.continue_label);
 }
 
 fn lower_do_stmt(ctx: &mut LoweringContext, stmt: &ast::DoStatement) {
-    let scope = LoopScope::do_loop(ctx);
-    ctx.loop_scoped(scope, |ctx| {
-        ctx.instrs.label(ctx.loop_scope.start_label);
+    let start_label = ctx.label();
+    let continue_label = ctx.label();
+    let end_label = ctx.label();
+
+    ctx.loop_scoped(end_label, continue_label, |ctx| {
+        ctx.instrs.label(start_label);
         lower_stmt(ctx, &stmt.body);
 
-        ctx.instrs.label(ctx.loop_scope.continue_label);
+        ctx.instrs.label(continue_label);
         let value = lower_expr(ctx, &stmt.condition);
-        ctx.instrs.jmpnz(value, ctx.loop_scope.start_label);
+        ctx.instrs.jmpnz(value, start_label);
 
-        ctx.instrs.label(ctx.loop_scope.end_label);
+        ctx.instrs.label(end_label);
     })
 }
 
@@ -256,23 +229,26 @@ fn lower_for_stmt(ctx: &mut LoweringContext, stmt: &ast::ForStatement) {
             lower_for_init(ctx, init);
         }
 
-        let scope = LoopScope::for_loop(ctx);
-        ctx.loop_scoped(scope, |ctx| {
-            ctx.instrs.label(ctx.loop_scope.start_label);
+        let start_label = ctx.label();
+        let continue_label = ctx.label();
+        let end_label = ctx.label();
+
+        ctx.loop_scoped(end_label, continue_label, |ctx| {
+            ctx.instrs.label(start_label);
             if let Some(condition) = &stmt.condition {
                 let value = lower_expr(ctx, condition);
-                ctx.instrs.jmpz(value, ctx.loop_scope.end_label);
+                ctx.instrs.jmpz(value, end_label);
             }
 
             lower_stmt(ctx, &stmt.body);
-            ctx.instrs.label(ctx.loop_scope.continue_label);
+            ctx.instrs.label(continue_label);
 
             if let Some(post) = &stmt.post {
                 lower_expr(ctx, post);
             }
 
-            ctx.instrs.jmp(ctx.loop_scope.start_label);
-            ctx.instrs.label(ctx.loop_scope.end_label);
+            ctx.instrs.jmp(start_label);
+            ctx.instrs.label(end_label);
         })
     })
 }
@@ -334,10 +310,30 @@ fn lower_if_then_else(
 
 fn lower_labeled_stmt(ctx: &mut LoweringContext, stmt: &ast::LabeledStatement) {
     match stmt {
-        ast::LabeledStatement::Case(_) => todo!(),
-        ast::LabeledStatement::Default(_) => todo!(),
+        ast::LabeledStatement::Case(stmt) => lower_case_labeled_stmt(ctx, stmt),
+        ast::LabeledStatement::Default(stmt) => lower_default_labeled_stmt(ctx, stmt),
         ast::LabeledStatement::Identifier(stmt) => lower_identifier_labeled_stmt(ctx, stmt),
     }
+}
+
+fn lower_case_labeled_stmt(ctx: &mut LoweringContext, stmt: &ast::CaseLabeledStatement) {
+    let label = ctx
+        .switch_labels
+        .label(stmt.constant.value)
+        .expect("case label should exist");
+
+    ctx.instrs.label(label);
+    lower_stmt(ctx, &stmt.stmt);
+}
+
+fn lower_default_labeled_stmt(ctx: &mut LoweringContext, stmt: &ast::DefaultLabeledStatement) {
+    let label = ctx
+        .switch_labels
+        .default_label
+        .expect("default label should exist");
+
+    ctx.instrs.label(label);
+    lower_stmt(ctx, &stmt.stmt);
 }
 
 fn lower_identifier_labeled_stmt(
@@ -356,17 +352,45 @@ fn lower_return_stmt(ctx: &mut LoweringContext, stmt: &ast::ReturnStatement) {
     ctx.instrs.ret(value);
 }
 
+fn lower_switch_stmt(ctx: &mut LoweringContext, stmt: &ast::SwitchStatement) {
+    let value = lower_expr(ctx, &stmt.expr);
+
+    let temp_var = ctx.temp_var();
+    let labels = SwitchLabelsCollector::new(ctx).collect(stmt);
+    let end_label = labels.end_label;
+
+    for &(constant, label) in &labels.case_labels {
+        let constant = tac::Constant { value: constant };
+        let rhs = tac::Value::Constant(constant);
+        ctx.instrs.binary(tac::BinaryOperator::Equal, value, rhs, temp_var);
+
+        let value = tac::Value::Variable(temp_var);
+        ctx.instrs.jmpnz(value, label);
+    }
+
+    if let Some(label) = labels.default_label {
+        ctx.instrs.jmp(label);
+    } else {
+        ctx.instrs.jmp(labels.end_label);
+    }
+
+    ctx.switch_scoped(labels, |ctx| lower_stmt(ctx, &stmt.body));
+    ctx.instrs.label(end_label);
+}
+
 fn lower_while_stmt(ctx: &mut LoweringContext, stmt: &ast::WhileStatement) {
-    let scope = LoopScope::while_loop(ctx);
-    ctx.loop_scoped(scope, |ctx| {
-        ctx.instrs.label(ctx.loop_scope.start_label);
+    let start_label = ctx.label();
+    let end_label = ctx.label();
+
+    ctx.loop_scoped(end_label, start_label, |ctx| {
+        ctx.instrs.label(start_label);
 
         let value = lower_expr(ctx, &stmt.condition);
-        ctx.instrs.jmpz(value, ctx.loop_scope.end_label);
+        ctx.instrs.jmpz(value, end_label);
 
         lower_stmt(ctx, &stmt.body);
-        ctx.instrs.jmp(ctx.loop_scope.start_label);
-        ctx.instrs.label(ctx.loop_scope.end_label);
+        ctx.instrs.jmp(start_label);
+        ctx.instrs.label(end_label);
     })
 }
 

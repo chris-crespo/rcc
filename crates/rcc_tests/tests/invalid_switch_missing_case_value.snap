@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_switch_missing_case_value.c
+compiler_output:
+  × Unexpected token
+   ╭─[3:13]
+ 2 │     switch(0) {
+ 3 │         case: return 0;
+   ·             ─
+ 4 │     }
+   ╰────

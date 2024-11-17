@@ -98,13 +98,13 @@ pub struct Label {
     pub id: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Value {
     Constant(Constant),
     Variable(Variable),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Constant {
     pub value: u64,
 }
