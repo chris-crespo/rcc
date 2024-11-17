@@ -1,10 +1,5 @@
 use crate::{
-    AssignmentExpression, BinaryExpression, Block, BlockItem, BreakStatement, CaseLabeledStatement,
-    ConditionalExpression, ContinueStatement, Declaration, DefaultLabeledStatement, DoStatement,
-    EmptyStatement, Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration,
-    GotoStatement, Identifier, IdentifierLabeledStatement, IfStatement, Label, LabeledStatement,
-    Lvalue, NumberLiteral, Program, ReturnStatement, Statement, SwitchStatement, Type,
-    TypedefDeclaration, UnaryExpression, UpdateExpression, VariableDeclaration, WhileStatement,
+    AssignmentExpression, BinaryExpression, Block, BlockItem, BreakStatement, CallExpression, CaseLabeledStatement, ConditionalExpression, ContinueStatement, Declaration, DefaultLabeledStatement, DoStatement, EmptyStatement, Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement, Identifier, IdentifierLabeledStatement, IfStatement, Label, LabeledStatement, Lvalue, NumberLiteral, Program, ReturnStatement, Statement, SwitchStatement, Type, TypedefDeclaration, UnaryExpression, UpdateExpression, VariableDeclaration, WhileStatement
 };
 
 pub trait Visit<'src>: Sized {
@@ -141,6 +136,11 @@ pub trait Visit<'src>: Sized {
     #[inline]
     fn visit_binary_expr(&self, expr: &BinaryExpression<'src>) {
         walk_binary_expr(self, expr);
+    }
+
+    #[inline]
+    fn visit_call_expr(&self, expr: &CallExpression<'src>) {
+        walk_call_expr(self, expr);
     }
 
     #[inline]
@@ -340,6 +340,7 @@ pub fn walk_expr<'src, V: Visit<'src>>(v: &V, expr: &Expression<'src>) {
         Expression::Identifier(id) => v.visit_id(id),
         Expression::Assignment(expr) => v.visit_assignment_expr(expr),
         Expression::Binary(expr) => v.visit_binary_expr(expr),
+        Expression::Call(expr) => v.visit_call_expr(expr),
         Expression::Conditional(expr) => v.visit_conditional_expr(expr),
         Expression::Unary(expr) => v.visit_unary_expr(expr),
         Expression::Update(expr) => v.visit_update_expr(expr),
@@ -354,6 +355,14 @@ pub fn walk_assignment_expr<'src, V: Visit<'src>>(v: &V, expr: &AssignmentExpres
 pub fn walk_binary_expr<'src, V: Visit<'src>>(v: &V, expr: &BinaryExpression<'src>) {
     v.visit_expr(&expr.lhs);
     v.visit_expr(&expr.rhs);
+}
+
+pub fn walk_call_expr<'src, V: Visit<'src>>(v: &V, expr: &CallExpression<'src>) {
+    v.visit_id(&expr.id);
+    
+    for arg in &expr.args {
+        v.visit_expr(arg);
+    }
 }
 
 pub fn walk_conditional_expr<'src, V: Visit<'src>>(v: &V, expr: &ConditionalExpression<'src>) {

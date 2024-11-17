@@ -176,6 +176,7 @@ pub enum Expression<'a> {
 
     Assignment(&'a AssignmentExpression<'a>),
     Binary(&'a BinaryExpression<'a>),
+    Call(&'a CallExpression<'a>),
     Conditional(&'a ConditionalExpression<'a>),
     Unary(&'a UnaryExpression<'a>),
     Update(&'a UpdateExpression),
@@ -237,6 +238,13 @@ pub enum BinaryOperator {
     LessThanEqual,
     GreaterThan,
     GreaterThanEqual,
+}
+
+#[derive(Debug)]
+pub struct CallExpression<'a> {
+    pub span: Span,
+    pub id: Identifier,
+    pub args: Vec<'a, Expression<'a>>
 }
 
 #[derive(Debug)]

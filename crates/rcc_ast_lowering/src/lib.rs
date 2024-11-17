@@ -406,6 +406,7 @@ fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
             lower_or_expr(ctx, expr)
         }
         ast::Expression::Binary(expr) => lower_binary_expr(ctx, expr),
+        ast::Expression::Call(expr) => todo!(),
         ast::Expression::Conditional(expr) => lower_conditional_expr(ctx, expr),
         ast::Expression::Unary(expr) => lower_unary_expr(ctx, expr),
         ast::Expression::Update(expr) if expr.postfix => lower_update_expr_postfix(ctx, expr),
