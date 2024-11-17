@@ -135,6 +135,8 @@ fn tacky(filename: &str) {
         for error in resolution_result.errors {
             println!("{:?}", error.with_source_code(source.clone()))
         }
+
+        std::process::exit(1);
     }
 
     let tac = lower_to_tac(&program);
@@ -161,6 +163,8 @@ fn codegen(filename: &str) {
         for error in resolution_result.errors {
             println!("{:?}", error.with_source_code(source.clone()))
         }
+
+        std::process::exit(1);
     }
 
     let tac = lower_to_tac(&program);
@@ -188,6 +192,8 @@ fn compile(filename: &str) {
         for error in resolution_result.errors {
             println!("{:?}", error.with_source_code(source.clone()))
         }
+
+        std::process::exit(1);
     }
 
     let tac = lower_to_tac(&program);
