@@ -32,6 +32,12 @@ pub fn case_label_not_within_switch(span: Span) -> miette::Report {
         .into()
 }
 
+pub fn default_label_not_within_switch(span: Span) -> miette::Report {
+    MietteDiagnostic::new("Default label not within a switch statement")
+        .with_label(span)
+        .into()
+}
+
 pub fn duplicate_case_label(span1: Span, span2: Span) -> miette::Report {
     MietteDiagnostic::new("Duplicate case label")
         .with_label(span1.label("previously used here"))
