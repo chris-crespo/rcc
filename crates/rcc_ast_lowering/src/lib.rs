@@ -131,7 +131,7 @@ fn lower_program(ctx: &mut LoweringContext, program: &ast::Program) -> tac::Prog
         .body
         .iter()
         .find_map(|decl| match decl {
-            ast::Declaration::Function(decl) if decl.body.is_some() => {
+            ast::TopLevelItem::Function(decl) if decl.body.is_some() => {
                 lower_decl_func(ctx, decl)
             }
             _ => None,
@@ -152,7 +152,7 @@ fn lower_decl_func(
     lower_block(ctx, body);
     ctx.instrs.ret_zero();
 
-    let name = map_ast_id(&func.name);
+    let name = map_ast_id(&func.id);
     let body = ctx.instrs.take();
 
     let decl = tac::FunctionDeclaration { name, body };
@@ -176,10 +176,18 @@ fn lower_block_item(ctx: &mut LoweringContext, block_item: &ast::BlockItem) {
 
 fn lower_decl(ctx: &mut LoweringContext, decl: &ast::Declaration) {
     match decl {
-        ast::Declaration::Function(decl) => todo!(),
+        ast::Declaration::Function(decl) => lower_func_decl(ctx, decl),
         ast::Declaration::Typedef(_) => {}
         ast::Declaration::Variable(decl) => lower_var_decl(ctx, decl),
     }
+}
+
+fn lower_func_decl(ctx: &mut LoweringContext, decl: &ast::FunctionDeclaration) {
+    if decl.body.is_none() {
+        return;
+    }
+
+    todo!()
 }
 
 fn lower_var_decl(ctx: &mut LoweringContext, decl: &ast::VariableDeclaration) {
@@ -414,7 +422,7 @@ fn lower_while_stmt(ctx: &mut LoweringContext, stmt: &ast::WhileStatement) {
 fn lower_expr(ctx: &mut LoweringContext, expr: &ast::Expression) -> tac::Value {
     match expr {
         ast::Expression::NumberLiteral(lit) => map_number_literal(lit),
-        ast::Expression::Identifier(id) => map_id_expr(ctx, id),
+        ast::Expression::Var(lit) => map_id_expr(ctx, &lit.id),
         ast::Expression::Assignment(expr) => lower_assignment_expr(ctx, expr),
         ast::Expression::Binary(expr) if expr.op == ast::BinaryOperator::And => {
             lower_and_expr(ctx, expr)

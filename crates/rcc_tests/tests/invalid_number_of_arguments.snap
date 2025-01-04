@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_number_of_arguments.c
+compiler_output:
+  × Invalid number of arguments: expected 2, got 1
+   ╭─[5:12]
+ 4 │ int main(void) {
+ 5 │     return f(1);
+   ·            ─
+ 6 │ }
+   ╰────

@@ -236,6 +236,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "index_vec"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44faf5bb8861a9c72e20d3fb0fdbd59233e43056e2b80475ab0aacdc2e781355"
+
+[[package]]
 name = "insta"
 version = "1.41.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -356,6 +362,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "nonmax"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "610a5acd306ec67f907abe5567859a3c693fb9886eb1f012ab8f2a47bef3db51"
+
+[[package]]
 name = "object"
 version = "0.36.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -409,6 +421,7 @@ version = "0.1.0"
 dependencies = [
  "rcc_arena",
  "rcc_interner",
+ "rcc_semantics",
  "rcc_span",
 ]
 
@@ -426,6 +439,7 @@ name = "rcc_codeemit"
 version = "0.1.0"
 dependencies = [
  "rcc_asm",
+ "rcc_context",
  "rcc_interner",
 ]
 
@@ -438,6 +452,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rcc_context"
+version = "0.1.0"
+dependencies = [
+ "rcc_arena",
+ "rcc_interner",
+]
+
+[[package]]
 name = "rcc_driver"
 version = "0.1.0"
 dependencies = [
@@ -446,9 +468,11 @@ dependencies = [
  "rcc_ast_lowering",
  "rcc_codeemit",
  "rcc_codegen",
+ "rcc_context",
  "rcc_interner",
  "rcc_lexer",
  "rcc_parser",
+ "rcc_resolve",
  "rcc_semantics",
 ]
 
@@ -470,8 +494,21 @@ dependencies = [
  "miette",
  "rcc_arena",
  "rcc_ast",
+ "rcc_context",
  "rcc_interner",
  "rcc_lexer",
+ "rcc_semantics",
+ "rcc_span",
+]
+
+[[package]]
+name = "rcc_resolve"
+version = "0.1.0"
+dependencies = [
+ "miette",
+ "rcc_ast",
+ "rcc_context",
+ "rcc_interner",
  "rcc_span",
 ]
 
@@ -479,9 +516,12 @@ dependencies = [
 name = "rcc_semantics"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
+ "index_vec",
  "miette",
+ "nonmax",
  "rcc_arena",
- "rcc_ast",
+ "rcc_context",
  "rcc_interner",
  "rcc_span",
 ]

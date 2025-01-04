@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_call_to_undeclared_function.c
+compiler_output:
+  × Undefined `undeclared_function`
+   ╭─[2:5]
+ 1 │ int main(void) {
+ 2 │     undeclared_function();
+   ·     ───────────────────
+ 3 │ }
+   ╰────

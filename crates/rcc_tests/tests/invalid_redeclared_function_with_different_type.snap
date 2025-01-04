@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_redeclared_function_with_different_type.c
+compiler_output:
+  × Redefinition of `f` with different type: `int(int)` vs `int(void)`
+   ╭─[1:5]
+ 1 │ int f(void);
+   ·     ┬
+   ·     ╰── previous definition
+ 2 │ int f(int x);
+   ·     ─
+   ╰────

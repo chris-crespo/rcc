@@ -1,15 +1,8 @@
-#![allow(clippy::new_without_default)]
-
-use std::{
-    fs::File,
-    process::Command,
-};
+use std::{fs::File, process::Command};
 
 use clap::Parser as _;
-use rcc_arena::Arena;
 use rcc_ast_lowering::lower_to_tac;
-use rcc_interner::Interner;
-use rcc_lexer::{Lexer, TokenKind};
+use rcc_context::{AstArena, GlobalContext, TyArena};
 use rcc_parser::Parser;
 
 #[derive(Debug, clap::Parser)]
@@ -27,80 +20,29 @@ struct Cli {
     #[clap(long, group = "option")]
     validate: bool,
 
-    #[clap(short = 'S', group = "option")]
-    compile: bool,
+    #[clap(long, group = "option")]
+    tacky: bool,
 
     #[clap(long, group = "option")]
     codegen: bool,
 
-    #[clap(long, group = "option")]
-    tacky: bool,
+    #[clap(short = 'S', group = "option")]
+    compile: bool,
 }
 
 fn main() {
-    let args = Cli::parse();
+    let cli = Cli::parse();
 
-    if args.lex {
-        lex(&args.filename);
-    } else if args.parse {
-        parse(&args.filename);
-    } else if args.validate {
-        validate(&args.filename)
-    } else if args.tacky {
-        tacky(&args.filename)
-    } else if args.codegen {
-        codegen(&args.filename)
-    } else if args.compile {
-        compile(&args.filename)
-    } else {
-        compile(&args.filename);
-        assemble(
-            &args.filename.replace(".c", ".s"),
-            args.filename.trim_end_matches(".c"),
-        )
-        .expect("Failed to assemble program.");
+    let ast_arena = AstArena::new();
+    let ty_arena = TyArena::new();
+    let mut gcx = GlobalContext::new(&ast_arena, &ty_arena);
+    let source = spawn_preprocessor(&cli.filename).expect("Failed to preprocess file.");
+
+    if cli.lex {
+        return;
     }
-}
 
-fn lex(filename: &str) {
-    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
-    let mut lexer = Lexer::new(&source);
-    loop {
-        let token = lexer.next_token();
-        if token.kind == TokenKind::Eof {
-            break;
-        }
-
-        // TODO: add better error reporting
-        if token.kind == TokenKind::Undetermined {
-            std::process::exit(1);
-        }
-    }
-}
-
-fn parse(filename: &str) {
-    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
-
-    let arena = Arena::new();
-    let mut interner = Interner::new();
-
-    let parser = Parser::new(&source, &arena, &mut interner);
-    match parser.parse() {
-        Ok(program) => println!("{:#?}", program),
-        Err(err) => {
-            println!("{:?}", err.with_source_code(source.clone()));
-            std::process::exit(1)
-        }
-    };
-}
-
-fn validate(filename: &str) {
-    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
-
-    let arena = Arena::new();
-    let mut interner = Interner::new();
-
-    let parser = Parser::new(&source, &arena, &mut interner);
+    let parser = Parser::new(&mut gcx, &source);
     let program = match parser.parse() {
         Ok(program) => program,
         Err(err) => {
@@ -109,100 +51,43 @@ fn validate(filename: &str) {
         }
     };
 
-    let resolution_result = rcc_semantics::resolve(&interner, &program);
+    if cli.parse {
+        println!("{:#?}", program);
+        return;
+    }
+
+    let resolution_result = rcc_resolve::resolve(&gcx, &program);
     if !resolution_result.errors.is_empty() {
         for error in resolution_result.errors {
             println!("{:?}", error.with_source_code(source.clone()))
         }
     }
-}
 
-fn tacky(filename: &str) {
-    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
-
-    let arena = Arena::new();
-    let mut interner = Interner::new();
-
-    let parser = Parser::new(&source, &arena, &mut interner);
-    let program = match parser.parse() {
-        Ok(program) => program,
-        Err(err) => {
-            println!("{:?}", err.with_source_code(source.clone()));
-            std::process::exit(1)
-        }
-    };
-
-    let resolution_result = rcc_semantics::resolve(&interner, &program);
-    if !resolution_result.errors.is_empty() {
-        for error in resolution_result.errors {
-            println!("{:?}", error.with_source_code(source.clone()))
-        }
-
-        std::process::exit(1);
+    if cli.validate {
+        return;
     }
 
     let tac = lower_to_tac(&program);
-    println!("{:#?}", tac);
-}
-
-fn codegen(filename: &str) {
-    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
-
-    let arena = Arena::new();
-    let mut interner = Interner::new();
-
-    let parser = Parser::new(&source, &arena, &mut interner);
-    let program = match parser.parse() {
-        Ok(program) => program,
-        Err(err) => {
-            println!("{:?}", err.with_source_code(source.clone()));
-            std::process::exit(1)
-        }
-    };
-
-    let resolution_result = rcc_semantics::resolve(&interner, &program);
-    if !resolution_result.errors.is_empty() {
-        for error in resolution_result.errors {
-            println!("{:?}", error.with_source_code(source.clone()))
-        }
-
-        std::process::exit(1);
+    if cli.tacky {
+        println!("{:#?}", tac);
+        return;
     }
 
-    let tac = lower_to_tac(&program);
     let asm = rcc_codegen::codegen(&tac);
-    println!("{:#?}", asm);
-}
-
-fn compile(filename: &str) {
-    let source = spawn_preprocessor(filename).expect("Failed to preprocess file.");
-
-    let arena = Arena::new();
-    let mut interner = Interner::new();
-
-    let parser = Parser::new(&source, &arena, &mut interner);
-    let program = match parser.parse() {
-        Ok(program) => program,
-        Err(err) => {
-            println!("{:?}", err.with_source_code(source.clone()));
-            std::process::exit(1)
-        }
-    };
-
-    let resolution_result = rcc_semantics::resolve(&interner, &program);
-    if !resolution_result.errors.is_empty() {
-        for error in resolution_result.errors {
-            println!("{:?}", error.with_source_code(source.clone()))
-        }
-
-        std::process::exit(1);
+    if cli.codegen {
+        println!("{:#?}", asm);
+        return;
     }
 
-    let tac = lower_to_tac(&program);
-    let asm = rcc_codegen::codegen(&tac);
+    let file =
+        File::create(cli.filename.replace(".c", ".s")).expect("Failed to create output file");
+    rcc_codeemit::emit(&mut gcx, &asm, &file).expect("Failed to emit assembly.");
 
-    let file = File::create(filename.replace(".c", ".s")).expect("Failed to create output file");
-    rcc_codeemit::emit(&asm, &file, &mut interner).expect("Failed to emit assembly.");
+    assemble(
+        &cli.filename.replace(".c", ".s"),
+        cli.filename.trim_end_matches(".c"),
+    )
+    .expect("Failed to assemble program.");
 }
 
 fn spawn_preprocessor(filename: &str) -> std::io::Result<String> {

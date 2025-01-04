@@ -1,0 +1,15 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_redeclared_local_variables.c
+compiler_output:
+  × Redifinition of `x`
+   ╭─[2:7]
+ 1 │ int main(void) {
+ 2 │   int x;
+   ·       ┬
+   ·       ╰── previous definition
+ 3 │   int x;
+   ·       ─
+ 4 │ }
+   ╰────

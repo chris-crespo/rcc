@@ -5,7 +5,7 @@ use bumpalo::Bump;
 
 use crate::Arena;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Vec<'a, T>(vec::Vec<T, &'a Bump>);
 
 impl<'a, T> Vec<'a, T> {

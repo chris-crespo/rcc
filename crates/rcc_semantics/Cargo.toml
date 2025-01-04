@@ -5,8 +5,11 @@ edition.workspace = true
 
 [dependencies]
 rcc_arena    = { workspace = true }
-rcc_ast      = { workspace = true }
+rcc_context  = { workspace = true }
 rcc_interner = { workspace = true }
 rcc_span     = { workspace = true }
 
-miette = { workspace = true }
+bitflags  = { workspace = true }
+index_vec = { workspace = true }
+miette    = { workspace = true }
+nonmax    = { workspace = true }

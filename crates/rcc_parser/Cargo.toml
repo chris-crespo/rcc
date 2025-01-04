@@ -4,10 +4,12 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rcc_arena    = { workspace = true }
-rcc_ast      = { workspace = true }
-rcc_interner = { workspace = true }
-rcc_lexer    = { workspace = true }
-rcc_span     = { workspace = true }
+rcc_arena     = { workspace = true }
+rcc_ast       = { workspace = true }
+rcc_context   = { workspace = true }
+rcc_interner  = { workspace = true }
+rcc_lexer     = { workspace = true }
+rcc_semantics = { workspace = true }
+rcc_span      = { workspace = true }
 
-miette = { workspace = true }
+miette    = { workspace = true }

@@ -11,6 +11,10 @@ impl Span {
         Span { start, end }
     }
 
+    pub fn empty(at: u32) -> Span {
+        Span { start: at, end: at }
+    }
+
     pub fn sized(start: u32, size: u32) -> Span {
         Span { start, end: start + size }
     }

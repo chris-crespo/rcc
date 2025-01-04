@@ -8,27 +8,31 @@ use rcc_asm::{
     AddInstruction, AndInstruction, CmpInstruction, CondCode, FunctionDeclaration, IdivInstruction,
     ImmOperand, Instruction, JmpCCInstruction, JmpInstruction, Label, MovInstruction,
     MulInstruction, NegInstruction, NotInstruction, Operand, OrInstruction, Program,
-    RegisterOperand, SetCCInstruction, ShlInstruction, SarInstruction, StackOperand,
+    RegisterOperand, SarInstruction, SetCCInstruction, ShlInstruction, StackOperand,
     SubInstruction, XorInstruction,
 };
-use rcc_interner::Interner;
+use rcc_context::GlobalContext;
 
 struct EmitContext<'a, 'src> {
-    interner: &'a Interner<'src>,
+    gcx: &'a GlobalContext<'src>,
     output: BufWriter<&'a File>,
 }
 
 impl<'a, 'src> EmitContext<'a, 'src> {
-    pub fn new(output: &'a File, interner: &'a Interner<'src>) -> EmitContext<'a, 'src> {
+    pub fn new(gcx: &'a mut GlobalContext<'src>, output: &'a File) -> EmitContext<'a, 'src> {
         EmitContext {
+            gcx,
             output: BufWriter::new(output),
-            interner,
         }
     }
 }
 
-pub fn emit<'a>(program: &Program, output: &'a File, interner: &'a mut Interner) -> io::Result<()> {
-    let mut ctx = EmitContext::new(output, interner);
+pub fn emit<'a>(
+    gcx: &'a mut GlobalContext<'_>,
+    program: &Program,
+    output: &'a File,
+) -> io::Result<()> {
+    let mut ctx = EmitContext::new(gcx, output);
     emit_program(&mut ctx, program)
 }
 
@@ -227,7 +231,7 @@ fn format_cc(cc: CondCode) -> &'static str {
 
 fn format_label<'src>(ctx: &mut EmitContext<'_, 'src>, label: Label) -> Cow<'src, str> {
     match label {
-        Label::Named(label) => Cow::Borrowed(ctx.interner.get(label.symbol)),
+        Label::Named(label) => Cow::Borrowed(ctx.gcx.interner.get(label.symbol)),
         Label::Unnamed(label) => Cow::Owned(format!(".L{}", label.id)),
     }
 }

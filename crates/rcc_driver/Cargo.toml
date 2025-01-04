@@ -12,9 +12,11 @@ rcc_arena        = { workspace = true }
 rcc_ast_lowering = { workspace = true }
 rcc_codeemit     = { workspace = true }
 rcc_codegen      = { workspace = true }
+rcc_context      = { workspace = true }
 rcc_interner     = { workspace = true }
 rcc_lexer        = { workspace = true }
 rcc_parser       = { workspace = true }
+rcc_resolve      = { workspace = true }
 rcc_semantics    = { workspace = true }
 
 clap = { workspace = true }

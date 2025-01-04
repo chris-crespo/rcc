@@ -3,8 +3,13 @@ source: crates/rcc_tests/tests/mod.rs
 ---
 source: invalid_switch_redefinitions.c
 compiler_output:
-  × Redefined `b`
-   ╭─[8:17]
+  × Redifinition of `b`
+   ╭─[5:17]
+ 4 │         case 1:;
+ 5 │             int b = 10;
+   ·                 ┬
+   ·                 ╰── previous definition
+ 6 │             break;
  7 │         case 2:;
  8 │             int b = 11;
    ·                 ─

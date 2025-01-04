@@ -51,3 +51,24 @@ pub fn multiple_default_labels(span1: Span, span2: Span) -> miette::Report {
         .and_label(span2)
         .into()
 }
+
+pub fn forbidden_nested_function(span: Span) -> miette::Report {
+    MietteDiagnostic::new("ISO C forbids nested functions")
+        .with_label(span)
+        .into()
+}
+
+pub fn redefinition_of(name: &str, span1: Span, span2: Span) -> miette::Report {
+    MietteDiagnostic::new(format!("Redefinition of `{name}`"))
+        .with_label(span1)
+        .with_label(span2.label("previous definition"))
+        .into()
+}
+
+pub fn redefinition_of_as(name: &str, span1: Span, span2: Span) -> miette::Report {
+    let msg = format!("Redefinition of `{name}` with different kind of symbol");
+    MietteDiagnostic::new(msg)
+        .with_label(span1)
+        .with_label(span2.label("previous definition"))
+        .into()
+}

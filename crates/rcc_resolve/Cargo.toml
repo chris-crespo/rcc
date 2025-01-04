@@ -1,9 +1,12 @@
 [package]
-name = "rcc_codeemit"
+name = "rcc_resolve"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rcc_asm      = { workspace = true }
+rcc_ast      = { workspace = true }
 rcc_context  = { workspace = true }
 rcc_interner = { workspace = true }
+rcc_span     = { workspace = true }
+
+miette = { workspace = true }

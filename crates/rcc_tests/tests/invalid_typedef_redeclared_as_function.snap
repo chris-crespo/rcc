@@ -1,0 +1,13 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_typedef_redeclared_as_function.c
+compiler_output:
+  × Redefinition of `x` as different kind of symbol
+   ╭─[1:13]
+ 1 │ typedef int x;
+   ·             ┬
+   ·             ╰── previous definition
+ 2 │ int x(void);
+   ·     ─
+   ╰────

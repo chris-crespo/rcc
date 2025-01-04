@@ -1,16 +1,18 @@
-use std::collections::HashMap;
-
-use rcc_arena::Arena;
 use rcc_ast::{
-    AssignmentOperator, AstBuilder, BinaryOperator, Block, BlockItem, Declaration, Expression,
-    ForInit, Identifier, Label, Lvalue, Program, Statement, Type, UnaryOperator, UpdateOperator,
+    AliasType, AssignmentOperator, AstBuilder, BinaryOperator, Block, BlockItem, Declaration,
+    Expression, ForInit, FunctionDeclaration, Identifier, Label, Lvalue, Param, Program, Statement,
+    TopLevelItem, Type, TypedefDeclaration, UnaryOperator, UpdateOperator, VariableDeclaration,
 };
-use rcc_interner::{Interner, Symbol};
+use rcc_context::GlobalContext;
+use rcc_interner::Symbol;
 use rcc_lexer::{assignment_tokens, Lexer, LexerCheckpoint, Token, TokenKind};
+use rcc_semantics::{display_canonical_type, CanonicalType, TyBuilder};
+use rcc_semantics::{ScopeId, ScopeTree, Semantics, SymbolFlags, SymbolId};
 use rcc_span::Span;
 
 mod diagnostics;
 mod fold;
+mod semantics;
 
 fn map_assignment_operator(kind: TokenKind) -> AssignmentOperator {
     match kind {
@@ -72,7 +74,7 @@ fn map_update_operator(kind: TokenKind) -> UpdateOperator {
 
 fn map_lvalue(expr: &Expression) -> Option<Lvalue> {
     match expr {
-        Expression::Identifier(&id) => Some(Lvalue::Identifier(id)),
+        Expression::Var(lit) => Some(Lvalue::Identifier(lit.id)),
         _ => None,
     }
 }
@@ -135,50 +137,43 @@ struct DeclarationSpecifiers<'a> {
 
 #[derive(Debug, PartialEq, Eq)]
 enum DeclarationContext {
-    Global,
+    TopLevelItem,
     BlockItem,
     Loop,
 }
 
-#[derive(Debug, Default)]
-struct Scope {
-    functions: HashMap<Symbol, Span>,
-    typedefs: HashMap<Symbol, Span>,
-    variables: HashMap<Symbol, Span>,
-}
-
-type Result<T> = std::result::Result<T, miette::Report>;
+pub(crate) type Result<T> = std::result::Result<T, miette::Report>;
 
 pub struct Parser<'a, 'src> {
     source: &'src str,
     lexer: Lexer<'src>,
 
     ast: AstBuilder<'src>,
-    interner: &'a mut Interner<'src>,
+    ty: TyBuilder<'src>,
+    gcx: &'a mut GlobalContext<'src>,
 
     curr_token: Token,
     prev_token_end: u32,
 
-    scopes: Vec<Scope>,
+    current_scope: ScopeId,
+    semantics: Semantics<'src>,
 }
 
 impl<'a, 'src> Parser<'a, 'src> {
-    pub fn new(
-        source: &'src str,
-        arena: &'src Arena,
-        interner: &'a mut Interner<'src>,
-    ) -> Parser<'a, 'src> {
+    pub fn new(gcx: &'a mut GlobalContext<'src>, source: &'src str) -> Parser<'a, 'src> {
         let mut parser = Parser {
             source,
             lexer: Lexer::new(source),
 
-            ast: AstBuilder::new(arena),
-            interner,
+            ast: AstBuilder::new(gcx.arenas.ast),
+            ty: TyBuilder::new(gcx.arenas.ty),
+            gcx,
 
             curr_token: Token::default(),
             prev_token_end: 0,
 
-            scopes: Vec::new(),
+            current_scope: ScopeTree::ROOT_SCOPE_ID,
+            semantics: Semantics::default(),
         };
 
         parser.bump();
@@ -283,104 +278,228 @@ impl<'a, 'src> Parser<'a, 'src> {
         diagnostics::unexpected(self.curr_token.span)
     }
 
-    fn start_scope(&mut self) {
-        let scope = Scope::default();
-        self.scopes.push(scope)
-    }
-
-    fn end_scope(&mut self) {
-        self.scopes.pop().expect("scopes should never be empty");
+    #[inline]
+    fn in_root_scope(&mut self) -> bool {
+        self.current_scope == ScopeTree::ROOT_SCOPE_ID
     }
 
     fn scoped<F, T>(&mut self, f: F) -> Result<T>
     where
         F: FnOnce(&mut Parser<'a, 'src>) -> Result<T>,
     {
-        self.start_scope();
+        let previous_scope = self.current_scope;
+        self.current_scope = self.semantics.scopes.create_scope(Some(previous_scope));
 
         let result = f(self);
-        self.end_scope();
+        self.current_scope = previous_scope;
 
         result
     }
 
-    fn curr_scope_mut(&mut self) -> &mut Scope {
-        self.scopes
-            .last_mut()
-            .expect("scopes should never be empty")
+    fn declare_local_symbol(
+        &mut self,
+        span: Span,
+        symbol: Symbol,
+        flags: SymbolFlags,
+        ty: rcc_semantics::Type<'src>,
+    ) -> Result<SymbolId> {
+        self.declare_symbol_in_scope(span, symbol, self.current_scope, flags, ty)
     }
 
-    fn declare_typedef(&mut self, id: &Identifier) {
-        self.curr_scope_mut().typedefs.insert(id.symbol, id.span);
-    }
+    fn declare_symbol_in_scope(
+        &mut self,
+        span: Span,
+        symbol: Symbol,
+        scope_id: ScopeId,
+        flags: SymbolFlags,
+        ty: rcc_semantics::Type<'src>,
+    ) -> Result<SymbolId> {
+        let Some(symbol_id) = self.semantics.scopes.get_binding(scope_id, symbol) else {
+            let symbol_id = self
+                .semantics
+                .symbols
+                .create_symbol(span, symbol, scope_id, flags, ty);
+            self.semantics
+                .scopes
+                .add_binding(scope_id, symbol, symbol_id);
 
-    fn declare_variable(&mut self, id: &Identifier) -> Result<()> {
-        let curr_scope = self.curr_scope_mut();
-        if let Some(&span) = curr_scope.variables.get(&id.symbol) {
-            let source_id = self.interner.get(id.symbol);
-            return Err(diagnostics::redefined(source_id, span, id.span));
+            return Ok(symbol_id);
+        };
+
+        let name = self.gcx.interner.get(symbol);
+        let span2 = self.semantics.symbols.span(symbol_id);
+
+        let intersection_flags = self.semantics.symbols.flags(symbol_id).intersection(flags);
+        if intersection_flags
+            .difference(SymbolFlags::Definition)
+            .is_empty()
+        {
+            return Err(diagnostics::redefinition_as_different_kind_of_symbol(
+                name, span, span2,
+            ));
         }
 
-        curr_scope.variables.insert(id.symbol, id.span);
+        let expected_ty = self.semantics.symbols.ty(symbol_id);
+        if ty.canonical != expected_ty.canonical {
+            let ty1 = display_canonical_type(&ty.canonical);
+            let ty2 = display_canonical_type(&expected_ty.canonical);
 
-        Ok(())
+            return Err(diagnostics::redefinition_with_different_type(
+                name, span, span2, &ty1, &ty2,
+            ));
+        }
+
+        if intersection_flags.is_variable_declaration() && ScopeTree::ROOT_SCOPE_ID != scope_id {
+            return Err(diagnostics::redefinition(name, span, span2));
+        }
+
+        if intersection_flags.is_parameter_declaration() {
+            return Err(diagnostics::redefinition(name, span, span2));
+        }
+
+        if intersection_flags.is_definition() {
+            self.semantics.symbols.set_span(symbol_id, span);
+            return Err(diagnostics::redefinition(name, span, span2));
+        }
+
+        if flags.is_definition() {
+            self.semantics.symbols.set_span(symbol_id, span);
+            self.semantics.symbols.set_flags(symbol_id, flags);
+        }
+
+        Ok(symbol_id)
     }
 
-    fn lookup_typedef(&self, id: &Identifier) -> Result<()> {
-        let variable = self
+    fn resolve_function_type(
+        &mut self,
+        ret: &Type<'src>,
+        params: &[Param<'src>],
+    ) -> Result<rcc_semantics::Type<'src>> {
+        let ret = self.resolve_source_type(ret)?;
+        let params = self.resolve_function_params(params)?;
+
+        Ok(self.ty.func(ret.canonical, params))
+    }
+
+    fn resolve_function_params(
+        &self,
+        params: &[Param<'src>],
+    ) -> Result<rcc_arena::Vec<'src, rcc_semantics::CanonicalType<'src>>> {
+        let mut resolved_params = self.ty.vec();
+        for param in params {
+            let resolved_param = self.resolve_source_type(&param.ty)?;
+            resolved_params.push(resolved_param.canonical)
+        }
+
+        Ok(resolved_params)
+    }
+
+    fn resolve_symbol_type(&self, span: Span, symbol: Symbol) -> Result<rcc_semantics::Type<'src>> {
+        let Some(symbol_id) = self
+            .semantics
             .scopes
-            .iter()
-            .rev()
-            .find(|scope| scope.typedefs.contains_key(&id.symbol));
+            .find_binding(self.current_scope, symbol)
+        else {
+            let name = self.gcx.interner.get(symbol);
+            return Err(diagnostics::undefined(name, span));
+        };
 
-        if variable.is_some() {
-            return Ok(());
-        }
-
-        let source_id = self.interner.get(id.symbol);
-        Err(diagnostics::undefined(source_id, id.span))
+        Ok(self.semantics.symbols.ty(symbol_id))
     }
 
-    fn lookup_variable(&self, id: &Identifier) -> Result<()> {
-        let variable = self
-            .scopes
-            .iter()
-            .rev()
-            .find(|scope| scope.variables.contains_key(&id.symbol));
+    fn resolve_source_type(&self, ty: &Type<'src>) -> Result<rcc_semantics::Type<'src>> {
+        match ty {
+            Type::Void(_) => Ok(rcc_semantics::Type::void()),
+            Type::Int(_) => Ok(rcc_semantics::Type::int()),
+            Type::Alias(ty) => self.resolve_source_alias_type(ty),
+        }
+    }
 
-        if variable.is_some() {
-            return Ok(());
+    #[inline]
+    fn resolve_source_alias_type(&self, ty: &AliasType) -> Result<rcc_semantics::Type<'src>> {
+        self.resolve_type_alias(ty.id.span, ty.id.symbol)
+    }
+
+    fn resolve_type_alias(&self, span: Span, symbol: Symbol) -> Result<rcc_semantics::Type<'src>> {
+        let Some(symbol_id) = self
+            .semantics
+            .scopes
+            .find_binding(self.current_scope, symbol)
+        else {
+            let name = self.gcx.interner.get(symbol);
+            return Err(diagnostics::unknown_type(name, span));
+        };
+
+        if !self.semantics.symbols.flags(symbol_id).is_typedef() {
+            let name = self.gcx.interner.get(symbol);
+            return Err(diagnostics::unknown_type(name, span));
         }
 
-        let source_id = self.interner.get(id.symbol);
-        Err(diagnostics::undefined(source_id, id.span))
+        Ok(self.semantics.symbols.ty(symbol_id))
     }
 
     pub fn parse(mut self) -> Result<Program<'src>> {
+        self.semantics.scopes.create_scope(None);
         self.parse_program()
     }
 
     fn parse_program(&mut self) -> Result<Program<'src>> {
-        self.scoped(|p| {
-            let span = p.start_span();
-            let body = p.parse_program_body()?;
+        let span = self.start_span();
+        let body = self.parse_program_body()?;
 
-            let span = p.end_span(span);
-            let program = Program { span, body };
+        let span = self.end_span(span);
+        let program = Program { span, body };
 
-            Ok(program)
-        })
+        Ok(program)
     }
 
-    fn parse_program_body(&mut self) -> Result<rcc_arena::Vec<'src, Declaration<'src>>> {
+    fn parse_program_body(&mut self) -> Result<rcc_arena::Vec<'src, TopLevelItem<'src>>> {
         let mut body = self.ast.vec();
 
         while !self.at(TokenKind::Eof) {
-            let decl = self.parse_decl()?;
+            let decl = self.parse_top_level_item()?;
             body.push(decl);
         }
 
         Ok(body)
+    }
+
+    fn parse_top_level_item(&mut self) -> Result<TopLevelItem<'src>> {
+        if self.curr_kind() == TokenKind::Typedef {
+            let item = self.parse_top_level_item_typedef()?;
+            return Ok(item);
+        }
+
+        let decl_specs = self.parse_decl_specs()?;
+        if self.at(TokenKind::LeftParen) {
+            self.parse_top_level_item_func(decl_specs)
+        } else {
+            self.parse_top_level_item_var(decl_specs)
+        }
+    }
+
+    fn parse_top_level_item_func(
+        &mut self,
+        specs: DeclarationSpecifiers<'src>,
+    ) -> Result<TopLevelItem<'src>> {
+        let func_decl = self.parse_func_decl(specs, DeclarationContext::TopLevelItem)?;
+        let item = TopLevelItem::Function(func_decl);
+        Ok(item)
+    }
+
+    fn parse_top_level_item_typedef(&mut self) -> Result<TopLevelItem<'src>> {
+        let typedef_decl = self.parse_typedef_decl(DeclarationContext::TopLevelItem)?;
+        let item = TopLevelItem::Typedef(typedef_decl);
+        Ok(item)
+    }
+
+    fn parse_top_level_item_var(
+        &mut self,
+        specs: DeclarationSpecifiers<'src>,
+    ) -> Result<TopLevelItem<'src>> {
+        let var_decl = self.parse_var_decl(specs, DeclarationContext::TopLevelItem)?;
+        let item = TopLevelItem::Variable(var_decl);
+        Ok(item)
     }
 
     fn parse_block(&mut self) -> Result<Block<'src>> {
@@ -427,9 +546,9 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let decl_specs = match self.parse_decl_specs() {
             Ok(decl_specs) => decl_specs,
-            Err(err) => return Some(Err(err))
+            Err(err) => return Some(Err(err)),
         };
-        
+
         let decl = if self.at(TokenKind::LeftParen) {
             self.parse_decl_func(decl_specs, ctx)
         } else {
@@ -437,22 +556,6 @@ impl<'a, 'src> Parser<'a, 'src> {
         };
 
         Some(decl)
-    }
-
-    fn parse_decl(&mut self) -> Result<Declaration<'src>> {
-        const CTX: DeclarationContext = DeclarationContext::Global;
-
-        if self.curr_kind() == TokenKind::Typedef {
-            let decl = self.parse_decl_typedef(CTX)?;
-            return Ok(decl);
-        }
-
-        let decl_specs = self.parse_decl_specs()?;
-        if self.at(TokenKind::LeftParen) {
-            self.parse_decl_func(decl_specs, CTX)
-        } else {
-            self.parse_decl_var(decl_specs, CTX)
-        }
     }
 
     fn parse_decl_specs(&mut self) -> Result<DeclarationSpecifiers<'src>> {
@@ -471,46 +574,166 @@ impl<'a, 'src> Parser<'a, 'src> {
         specs: DeclarationSpecifiers<'src>,
         ctx: DeclarationContext,
     ) -> Result<Declaration<'src>> {
-        self.declare_variable(&specs.id)?;
+        let func_decl = self.parse_func_decl(specs, ctx)?;
+        let decl = Declaration::Function(func_decl);
 
+        Ok(decl)
+    }
+
+    fn parse_func_decl(
+        &mut self,
+        specs: DeclarationSpecifiers<'src>,
+        ctx: DeclarationContext,
+    ) -> Result<&'src FunctionDeclaration<'src>> {
+        let declaration_scope = self.current_scope;
         self.scoped(|p| {
-            p.expect(TokenKind::LeftParen)?;
-            p.expect(TokenKind::Void)?;
-            p.expect(TokenKind::RightParen)?;
-
-            let body = if p.eat(TokenKind::Semicolon) {
-                None
-            } else {
-                let block = p.parse_block()?;
-                Some(block)
-            };
+            let params = p.parse_params()?;
 
             let Some(ty) = specs.ty else {
                 return Err(diagnostics::missing_type(specs.id.span));
             };
 
+            let resolved_ty = p.resolve_function_type(&ty, &params)?;
+            let symbol_id = p.declare_symbol_in_scope(
+                specs.id.span,
+                specs.id.symbol,
+                declaration_scope,
+                SymbolFlags::Function,
+                resolved_ty,
+            )?;
+
+            let body = if p.eat(TokenKind::Semicolon) {
+                None
+            } else if p.at(TokenKind::LeftBrace) {
+                if params.first().is_some_and(|param| !param.ty.is_void()) {
+                    for param in &params {
+                        let Some(id) = param.id else {
+                            let diagnostic = diagnostics::omitting_the_parameter_name_in_a_function_definition_is_not_allowed(param.span);
+                            return Err(diagnostic)
+                        };
+
+                        let symbol_id = p
+                            .semantics
+                            .scopes
+                            .get_binding(p.current_scope, id.symbol)
+                            .expect("param should have been declared");
+                        p.semantics.symbols.union_flags(symbol_id, SymbolFlags::Definition);
+                    }
+                }
+
+                if declaration_scope != ScopeTree::ROOT_SCOPE_ID {
+                    return Err(diagnostics::function_definition_not_allowed(
+                        p.curr_token.span,
+                    ));
+                }
+
+                p.semantics
+                    .symbols
+                    .union_flags(symbol_id, SymbolFlags::Definition);
+
+                let block = p.parse_block()?;
+                Some(block)
+            } else {
+                return Err(diagnostics::expected_at(
+                    Span::empty(p.prev_token_end),
+                    TokenKind::Semicolon.as_str(),
+                    "end of declaration",
+                ));
+            };
+
             let span = p.end_span(specs.span);
-            let decl = p.ast.decl_func(span, ty, specs.id, body);
+            let decl = p.ast.alloc_func_decl(span, ty, specs.id, params, body);
 
             Ok(decl)
         })
     }
 
+    fn parse_params(&mut self) -> Result<rcc_arena::Vec<'src, Param<'src>>> {
+        self.expect(TokenKind::LeftParen)?;
+
+        let mut params = self.ast.vec();
+        if self.eat(TokenKind::RightParen) {
+            return Ok(params);
+        }
+
+        loop {
+            let param = self.parse_param()?;
+            params.push(param);
+
+            if !self.eat(TokenKind::Comma) {
+                self.expect(TokenKind::RightParen)?;
+                break;
+            }
+        }
+
+        for param in params.iter().skip(1) {
+            if param.ty.is_void() {
+                let diagnostic = diagnostics::void_must_be_the_first_and_only_parameter(param.span);
+                return Err(diagnostic);
+            }
+        }
+
+        Ok(params)
+    }
+
+    fn parse_param(&mut self) -> Result<Param<'src>> {
+        let span = self.start_span();
+        let ty = self.parse_ty()?;
+        let id = if !self.at(TokenKind::Comma) && !self.at(TokenKind::RightParen) {
+            let id = self.parse_id()?;
+            Some(id)
+        } else {
+            None
+        };
+
+        if let Some(id) = id {
+            if ty.is_void() {
+                let diagnostic = diagnostics::parameter_may_not_have_void_type(id.span);
+                return Err(diagnostic);
+            }
+
+            let resolved_ty = self.resolve_source_type(&ty)?;
+            self.declare_local_symbol(
+                id.span,
+                id.symbol,
+                SymbolFlags::ParameterDeclaration,
+                resolved_ty,
+            )?;
+        }
+
+        let span = self.end_span(span);
+        let param = self.ast.param(span, ty, id);
+
+        Ok(param)
+    }
+
     fn parse_decl_typedef(&mut self, ctx: DeclarationContext) -> Result<Declaration<'src>> {
+        let typedef_decl = self.parse_typedef_decl(ctx)?;
+        let decl = Declaration::Typedef(typedef_decl);
+
+        Ok(decl)
+    }
+
+    fn parse_typedef_decl(
+        &mut self,
+        ctx: DeclarationContext,
+    ) -> Result<&'src TypedefDeclaration<'src>> {
         let span = self.start_span();
         self.bump(); // Skip `typedef`
 
         let ty = self.parse_ty()?;
         let id = self.parse_id()?;
-        self.declare_typedef(&id);
 
-        // Global or block level.
+        let resolved_ty = self.resolve_source_type(&ty)?;
+        self.declare_local_symbol(id.span, id.symbol, SymbolFlags::Typedef, resolved_ty)?;
+
+        // Top or block level.
         if ctx != DeclarationContext::Loop {
             self.expect(TokenKind::Semicolon)?;
         }
 
         let span = self.end_span(span);
-        let decl = self.ast.decl_typedef(span, ty, id);
+        let decl = self.ast.alloc_typedef_decl(span, ty, id);
 
         Ok(decl)
     }
@@ -520,7 +743,31 @@ impl<'a, 'src> Parser<'a, 'src> {
         specs: DeclarationSpecifiers<'src>,
         ctx: DeclarationContext,
     ) -> Result<Declaration<'src>> {
-        self.declare_variable(&specs.id)?;
+        let var_decl = self.parse_var_decl(specs, ctx)?;
+        let decl = Declaration::Variable(var_decl);
+        Ok(decl)
+    }
+
+    fn parse_var_decl(
+        &mut self,
+        specs: DeclarationSpecifiers<'src>,
+        ctx: DeclarationContext,
+    ) -> Result<&'src VariableDeclaration<'src>> {
+        let Some(ty) = specs.ty else {
+            return Err(diagnostics::missing_type(specs.id.span));
+        };
+
+        let resolved_ty = self.resolve_source_type(&ty)?;
+        self.declare_local_symbol(
+            specs.id.span,
+            specs.id.symbol,
+            if self.at(TokenKind::Eq) {
+                SymbolFlags::VariableDefinition
+            } else {
+                SymbolFlags::VariableDeclaration
+            },
+            resolved_ty,
+        )?;
 
         let expr = if self.eat(TokenKind::Eq) {
             let expr = self.parse_expr()?;
@@ -533,12 +780,8 @@ impl<'a, 'src> Parser<'a, 'src> {
             self.expect(TokenKind::Semicolon)?;
         }
 
-        let Some(ty) = specs.ty else {
-            return Err(diagnostics::missing_type(specs.id.span));
-        };
-
         let span = self.end_span(specs.span);
-        let var_decl = self.ast.decl_var(span, ty, specs.id, expr);
+        let var_decl = self.ast.alloc_var_decl(span, ty, specs.id, expr);
 
         Ok(var_decl)
     }
@@ -846,7 +1089,7 @@ impl<'a, 'src> Parser<'a, 'src> {
             TokenKind::Plus2 | TokenKind::Minus2 => self.parse_expr_update_prefix(),
             TokenKind::LeftParen => self.parse_expr_group(),
             TokenKind::Number => self.parse_expr_number_lit(),
-            TokenKind::Identifier => self.parse_expr_id(),
+            TokenKind::Identifier => self.parse_expr_var(),
             _ => Err(self.unexpected()),
         }
     }
@@ -864,7 +1107,6 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn parse_expr_assignment(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
         let kind = self.curr_kind();
-
         self.bump(); // Skip operator
 
         let op = map_assignment_operator(kind);
@@ -879,7 +1121,6 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn parse_expr_binary(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
         let kind = self.curr_kind();
-
         self.bump(); // Skip operator.
 
         let op = map_binary_operator(kind);
@@ -894,11 +1135,34 @@ impl<'a, 'src> Parser<'a, 'src> {
 
     fn parse_expr_call(&mut self, lhs: Expression<'src>) -> Result<Expression<'src>> {
         let id = match lhs {
-            Expression::Identifier(&id) => id,
+            Expression::Var(lit) => lit.id,
             _ => return Err(diagnostics::non_function_call(lhs.span())),
         };
 
+        let Some(symbol_id) = self
+            .semantics
+            .scopes
+            .find_binding(self.current_scope, id.symbol)
+        else {
+            // So far, symbol resolution is done in `parse_expr_var`. Since we will always
+            // need to resolve the symbol again to perform further semantic analysis
+            // (e.g. check if the symbol is a function, typechecking, ...), we should
+            // remove it from there and do it here.
+            todo!()
+        };
+
+        let CanonicalType::Function(ty) = self.semantics.symbols.ty(symbol_id).canonical else {
+            return Err(diagnostics::non_function_call(lhs.span()));
+        };
+
         let args = self.parse_expr_call_args()?;
+        if args.len() != ty.params.len() {
+            return Err(diagnostics::invalid_number_of_arguments(
+                id.span,
+                ty.params.len(),
+                args.len(),
+            ));
+        }
 
         let span = self.end_span(lhs.span());
         let expr = self.ast.expr_call(span, id, args);
@@ -1014,19 +1278,30 @@ impl<'a, 'src> Parser<'a, 'src> {
         Ok(expr)
     }
 
-    fn parse_expr_id(&mut self) -> Result<Expression<'src>> {
+    fn parse_expr_var(&mut self) -> Result<Expression<'src>> {
         let id = self.parse_id()?;
-        self.lookup_variable(&id)?;
+        let ty = self.resolve_symbol_type(id.span, id.symbol)?;
 
-        let expr = self.ast.expr_id(id);
+        let expr = self.ast.expr_var_lit(id, ty);
         Ok(expr)
     }
 
     fn parse_ty(&mut self) -> Result<Type<'src>> {
         match self.curr_kind() {
+            TokenKind::Void => self.parse_ty_void(),
             TokenKind::Int => self.parse_ty_int(),
             _ => self.parse_ty_alias(),
         }
+    }
+
+    fn parse_ty_void(&mut self) -> Result<Type<'src>> {
+        let span = self.start_span();
+        self.bump(); // Skip `void`
+
+        let span = self.end_span(span);
+        let ty = self.ast.ty_void(span);
+
+        Ok(ty)
     }
 
     fn parse_ty_int(&mut self) -> Result<Type<'src>> {
@@ -1040,13 +1315,10 @@ impl<'a, 'src> Parser<'a, 'src> {
     }
 
     fn parse_ty_alias(&mut self) -> Result<Type<'src>> {
-        let span = self.start_span();
         let id = self.parse_id()?;
-        self.lookup_typedef(&id)?;
+        self.resolve_type_alias(id.span, id.symbol)?;
 
-        let span = self.end_span(span);
-        let ty = self.ast.ty_alias(span, id);
-
+        let ty = self.ast.ty_alias(id);
         Ok(ty)
     }
 
@@ -1057,7 +1329,7 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let span = self.start_span();
         let str = self.curr_str();
-        let symbol = self.interner.intern(str);
+        let symbol = self.gcx.interner.intern(str);
 
         self.bump();
 

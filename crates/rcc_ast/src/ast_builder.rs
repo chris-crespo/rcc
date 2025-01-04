@@ -1,4 +1,5 @@
 use rcc_arena::Arena;
+use rcc_semantics as semantics;
 use rcc_span::Span;
 
 use crate::{
@@ -7,9 +8,9 @@ use crate::{
     ContinueStatement, Declaration, DefaultLabeledStatement, DoStatement, EmptyStatement,
     Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement,
     Identifier, IdentifierLabeledStatement, IfStatement, IntType, Label, LabeledStatement, Lvalue,
-    NumberLiteral, Program, ReturnStatement, Statement, SwitchStatement, Type, TypedefDeclaration,
-    UnaryExpression, UnaryOperator, UpdateExpression, UpdateOperator, VariableDeclaration,
-    WhileStatement,
+    NumberLiteral, Param, Program, ReturnStatement, Statement, SwitchStatement, TopLevelItem, Type,
+    TypedefDeclaration, UnaryExpression, UnaryOperator, UpdateExpression, UpdateOperator,
+    VarLiteral, VariableDeclaration, VoidType, WhileStatement,
 };
 
 pub struct AstBuilder<'a> {
@@ -30,7 +31,7 @@ impl<'a> AstBuilder<'a> {
         rcc_arena::Vec::new_in(self.arena)
     }
 
-    pub fn program(&self, span: Span, body: rcc_arena::Vec<'a, Declaration<'a>>) -> Program<'a> {
+    pub fn program(&self, span: Span, body: rcc_arena::Vec<'a, TopLevelItem<'a>>) -> Program<'a> {
         Program { span, body }
     }
 
@@ -51,10 +52,23 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         ty: Type<'a>,
         name: Identifier,
+        params: rcc_arena::Vec<'a, Param<'a>>,
         body: Option<Block<'a>>,
     ) -> Declaration<'a> {
-        let func_decl = self.func_decl(span, ty, name, body);
-        Declaration::Function(self.alloc(func_decl))
+        let func_decl = self.alloc_func_decl(span, ty, name, params, body);
+        Declaration::Function(func_decl)
+    }
+
+    pub fn alloc_func_decl(
+        &self,
+        span: Span,
+        ty: Type<'a>,
+        name: Identifier,
+        params: rcc_arena::Vec<'a, Param<'a>>,
+        body: Option<Block<'a>>,
+    ) -> &'a FunctionDeclaration<'a> {
+        let func_decl = self.func_decl(span, ty, name, params, body);
+        self.alloc(func_decl)
     }
 
     pub fn func_decl(
@@ -62,14 +76,35 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         ty: Type<'a>,
         name: Identifier,
+        params: rcc_arena::Vec<'a, Param<'a>>,
         body: Option<Block<'a>>,
     ) -> FunctionDeclaration<'a> {
-        FunctionDeclaration { span, ty, name, body }
+        FunctionDeclaration {
+            span,
+            ty,
+            id: name,
+            params,
+            body,
+        }
+    }
+
+    pub fn param(&self, span: Span, ty: Type<'a>, id: Option<Identifier>) -> Param<'a> {
+        Param { span, ty, id }
     }
 
     pub fn decl_typedef(&self, span: Span, ty: Type<'a>, id: Identifier) -> Declaration<'a> {
+        let typedef_decl = self.alloc_typedef_decl(span, ty, id);
+        Declaration::Typedef(typedef_decl)
+    }
+
+    pub fn alloc_typedef_decl(
+        &self,
+        span: Span,
+        ty: Type<'a>,
+        id: Identifier,
+    ) -> &'a TypedefDeclaration<'a> {
         let typedef_decl = self.typedef_decl(span, ty, id);
-        Declaration::Typedef(self.alloc(typedef_decl))
+        self.alloc(typedef_decl)
     }
 
     pub fn typedef_decl(&self, span: Span, ty: Type<'a>, id: Identifier) -> TypedefDeclaration<'a> {
@@ -83,8 +118,19 @@ impl<'a> AstBuilder<'a> {
         id: Identifier,
         expr: Option<Expression<'a>>,
     ) -> Declaration<'a> {
+        let var_decl = self.alloc_var_decl(span, ty, id, expr);
+        Declaration::Variable(var_decl)
+    }
+
+    pub fn alloc_var_decl(
+        &self,
+        span: Span,
+        ty: Type<'a>,
+        id: Identifier,
+        expr: Option<Expression<'a>>,
+    ) -> &'a VariableDeclaration<'a> {
         let var_decl = self.var_decl(span, ty, id, expr);
-        Declaration::Variable(self.alloc(var_decl))
+        self.alloc(var_decl)
     }
 
     pub fn var_decl(
@@ -488,8 +534,22 @@ impl<'a> AstBuilder<'a> {
         NumberLiteral { span, value }
     }
 
-    pub fn expr_id(&self, id: Identifier) -> Expression<'a> {
-        Expression::Identifier(self.alloc(id))
+    pub fn expr_var_lit(&self, id: Identifier, ty: semantics::Type<'a>) -> Expression<'a> {
+        let var_lit = self.var_lit(id, ty);
+        Expression::Var(self.alloc(var_lit))
+    }
+
+    pub fn var_lit(&self, id: Identifier, ty: semantics::Type<'a>) -> VarLiteral<'a> {
+        VarLiteral { id, ty }
+    }
+
+    pub fn ty_void(&self, span: Span) -> Type<'a> {
+        let void_ty = self.void_ty(span);
+        Type::Void(self.alloc(void_ty))
+    }
+
+    pub fn void_ty(&self, span: Span) -> VoidType {
+        VoidType { span }
     }
 
     pub fn ty_int(&self, span: Span) -> Type<'a> {
@@ -501,12 +561,12 @@ impl<'a> AstBuilder<'a> {
         IntType { span }
     }
 
-    pub fn ty_alias(&self, span: Span, id: Identifier) -> Type<'a> {
-        let alias_ty = self.alias_ty(span, id);
+    pub fn ty_alias(&self, id: Identifier) -> Type<'a> {
+        let alias_ty = self.alias_ty(id);
         Type::Alias(self.alloc(alias_ty))
     }
 
-    pub fn alias_ty(&self, span: Span, id: Identifier) -> AliasType {
-        AliasType { span, id }
+    pub fn alias_ty(&self, id: Identifier) -> AliasType {
+        AliasType { id }
     }
 }

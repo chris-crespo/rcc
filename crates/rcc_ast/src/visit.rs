@@ -1,11 +1,22 @@
 use crate::{
-    AssignmentExpression, BinaryExpression, Block, BlockItem, BreakStatement, CallExpression, CaseLabeledStatement, ConditionalExpression, ContinueStatement, Declaration, DefaultLabeledStatement, DoStatement, EmptyStatement, Expression, ExpressionStatement, ForInit, ForStatement, FunctionDeclaration, GotoStatement, Identifier, IdentifierLabeledStatement, IfStatement, Label, LabeledStatement, Lvalue, NumberLiteral, Program, ReturnStatement, Statement, SwitchStatement, Type, TypedefDeclaration, UnaryExpression, UpdateExpression, VariableDeclaration, WhileStatement
+    AssignmentExpression, BinaryExpression, Block, BlockItem, BreakStatement, CallExpression,
+    CaseLabeledStatement, ConditionalExpression, ContinueStatement, Declaration,
+    DefaultLabeledStatement, DoStatement, EmptyStatement, Expression, ExpressionStatement, ForInit,
+    ForStatement, FunctionDeclaration, GotoStatement, Identifier, IdentifierLabeledStatement,
+    IfStatement, Label, LabeledStatement, Lvalue, NumberLiteral, Program, ReturnStatement,
+    Statement, SwitchStatement, TopLevelItem, Type, TypedefDeclaration, UnaryExpression,
+    UpdateExpression, VarLiteral, VariableDeclaration, WhileStatement,
 };
 
 pub trait Visit<'src>: Sized {
     #[inline]
     fn visit_program(&self, program: &Program<'src>) {
         walk_program(self, program);
+    }
+
+    #[inline]
+    fn visit_top_level_item(&self, top_level_item: &TopLevelItem<'src>) {
+        walk_top_level_item(self, top_level_item)
     }
 
     #[inline]
@@ -169,6 +180,11 @@ pub trait Visit<'src>: Sized {
     }
 
     #[inline]
+    fn visit_var_lit(&self, lit: &VarLiteral) {
+        walk_var_lit(self, lit);
+    }
+
+    #[inline]
     fn visit_type(&self, ty: &Type<'src>) {
         walk_type(self, ty);
     }
@@ -185,14 +201,22 @@ pub trait Visit<'src>: Sized {
 }
 
 pub fn walk_program<'src, V: Visit<'src>>(v: &V, program: &Program<'src>) {
-    for decl in &program.body {
-        v.visit_decl(decl);
+    for item in &program.body {
+        v.visit_top_level_item(item);
+    }
+}
+
+pub fn walk_top_level_item<'src, V: Visit<'src>>(v: &V, top_level_item: &TopLevelItem<'src>) {
+    match top_level_item {
+        TopLevelItem::Function(item) => v.visit_function_decl(item),
+        TopLevelItem::Typedef(item) => v.visit_typedef_decl(item),
+        TopLevelItem::Variable(item) => v.visit_variable_decl(item),
     }
 }
 
 pub fn walk_func_decl<'src, V: Visit<'src>>(v: &V, decl: &FunctionDeclaration<'src>) {
     if let Some(body) = &decl.body {
-        v.visit_block(body)
+        v.visit_block(body);
     }
 }
 
@@ -342,7 +366,7 @@ pub fn walk_while_stmt<'src, V: Visit<'src>>(v: &V, stmt: &WhileStatement<'src>)
 pub fn walk_expr<'src, V: Visit<'src>>(v: &V, expr: &Expression<'src>) {
     match expr {
         Expression::NumberLiteral(lit) => v.visit_number_lit(lit),
-        Expression::Identifier(id) => v.visit_id(id),
+        Expression::Var(lit) => v.visit_var_lit(lit),
         Expression::Assignment(expr) => v.visit_assignment_expr(expr),
         Expression::Binary(expr) => v.visit_binary_expr(expr),
         Expression::Call(expr) => v.visit_call_expr(expr),
@@ -364,7 +388,7 @@ pub fn walk_binary_expr<'src, V: Visit<'src>>(v: &V, expr: &BinaryExpression<'sr
 
 pub fn walk_call_expr<'src, V: Visit<'src>>(v: &V, expr: &CallExpression<'src>) {
     v.visit_id(&expr.id);
-    
+
     for arg in &expr.args {
         v.visit_expr(arg);
     }
@@ -391,6 +415,8 @@ pub fn walk_lvalue<'src, V: Visit<'src>>(v: &V, lvalue: &Lvalue) {
 }
 
 pub fn walk_number_lit<'src, V: Visit<'src>>(_v: &V, _lit: &NumberLiteral) {}
+
+pub fn walk_var_lit<'src, V: Visit<'src>>(_v: &V, _lit: &VarLiteral) {}
 
 pub fn walk_type<'src, V: Visit<'src>>(_v: &V, _ty: &Type<'src>) {}
 

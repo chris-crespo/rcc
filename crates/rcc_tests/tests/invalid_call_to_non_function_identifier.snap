@@ -1,0 +1,12 @@
+---
+source: crates/rcc_tests/tests/mod.rs
+---
+source: invalid_call_to_non_function_identifier.c
+compiler_output:
+  × Called object is not a function
+   ╭─[3:5]
+ 2 │     int x = 0;
+ 3 │     x(1);
+   ·     ─
+ 4 │ }
+   ╰────

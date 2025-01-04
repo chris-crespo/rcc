@@ -1,11 +1,19 @@
 use rcc_arena::Vec;
 use rcc_interner::Symbol;
+use rcc_semantics as semantics;
 use rcc_span::Span;
 
 #[derive(Debug)]
 pub struct Program<'a> {
     pub span: Span,
-    pub body: Vec<'a, Declaration<'a>>,
+    pub body: Vec<'a, TopLevelItem<'a>>,
+}
+
+#[derive(Debug)]
+pub enum TopLevelItem<'a> {
+    Function(&'a FunctionDeclaration<'a>),
+    Typedef(&'a TypedefDeclaration<'a>),
+    Variable(&'a VariableDeclaration<'a>)
 }
 
 #[derive(Debug)]
@@ -31,15 +39,23 @@ pub enum Declaration<'a> {
 pub struct FunctionDeclaration<'a> {
     pub span: Span,
     pub ty: Type<'a>,
-    pub name: Identifier,
-    pub body: Option<Block<'a>>,
+    pub id: Identifier,
+    pub params: Vec<'a, Param<'a>>,
+    pub body: Option<Block<'a>>
+}
+
+#[derive(Debug)]
+pub struct Param<'a> {
+    pub span: Span,
+    pub ty: Type<'a>,
+    pub id: Option<Identifier>
 }
 
 #[derive(Debug)]
 pub struct TypedefDeclaration<'a> {
     pub span: Span,
     pub ty: Type<'a>,
-    pub id: Identifier
+    pub id: Identifier,
 }
 
 #[derive(Debug)]
@@ -69,24 +85,24 @@ pub enum Statement<'a> {
 
 #[derive(Debug)]
 pub struct BreakStatement {
-    pub span: Span
+    pub span: Span,
 }
 
 #[derive(Debug)]
 pub struct ContinueStatement {
-    pub span: Span
+    pub span: Span,
 }
 
 #[derive(Debug)]
 pub struct DoStatement<'a> {
     pub span: Span,
     pub body: Statement<'a>,
-    pub condition: Expression<'a>
+    pub condition: Expression<'a>,
 }
 
 #[derive(Debug)]
 pub struct EmptyStatement {
-    pub span: Span
+    pub span: Span,
 }
 
 #[derive(Debug)]
@@ -95,7 +111,7 @@ pub struct ForStatement<'a> {
     pub init: Option<ForInit<'a>>,
     pub condition: Option<Expression<'a>>,
     pub post: Option<Expression<'a>>,
-    pub body: Statement<'a>
+    pub body: Statement<'a>,
 }
 
 #[derive(Debug)]
@@ -115,7 +131,7 @@ pub struct IfStatement<'a> {
     pub span: Span,
     pub condition: Expression<'a>,
     pub consequent: Statement<'a>,
-    pub alternate: Option<Statement<'a>>
+    pub alternate: Option<Statement<'a>>,
 }
 
 #[derive(Debug)]
@@ -129,20 +145,20 @@ pub enum LabeledStatement<'a> {
 pub struct CaseLabeledStatement<'a> {
     pub span: Span,
     pub constant: &'a NumberLiteral,
-    pub stmt: Statement<'a>
+    pub stmt: Statement<'a>,
 }
 
 #[derive(Debug)]
 pub struct DefaultLabeledStatement<'a> {
     pub span: Span,
-    pub stmt: Statement<'a>
+    pub stmt: Statement<'a>,
 }
 
 #[derive(Debug)]
 pub struct IdentifierLabeledStatement<'a> {
     pub span: Span,
     pub label: Label,
-    pub stmt: Statement<'a>
+    pub stmt: Statement<'a>,
 }
 
 #[derive(Debug)]
@@ -155,14 +171,14 @@ pub struct ReturnStatement<'a> {
 pub struct SwitchStatement<'a> {
     pub span: Span,
     pub expr: Expression<'a>,
-    pub body: Statement<'a>
+    pub body: Statement<'a>,
 }
 
 #[derive(Debug)]
 pub struct WhileStatement<'a> {
     pub span: Span,
     pub condition: Expression<'a>,
-    pub body: Statement<'a>
+    pub body: Statement<'a>,
 }
 
 #[derive(Debug)]
@@ -174,7 +190,7 @@ pub struct ExpressionStatement<'a> {
 #[derive(Debug)]
 pub enum Expression<'a> {
     NumberLiteral(&'a NumberLiteral),
-    Identifier(&'a Identifier),
+    Var(&'a VarLiteral<'a>),
 
     Assignment(&'a AssignmentExpression<'a>),
     Binary(&'a BinaryExpression<'a>),
@@ -204,7 +220,7 @@ pub enum AssignmentOperator {
     BitwiseOr,
     BitwiseXor,
     LeftShift,
-    RightShift
+    RightShift,
 }
 
 #[derive(Debug)]
@@ -246,7 +262,7 @@ pub enum BinaryOperator {
 pub struct CallExpression<'a> {
     pub span: Span,
     pub id: Identifier,
-    pub args: Vec<'a, Expression<'a>>
+    pub args: Vec<'a, Expression<'a>>,
 }
 
 #[derive(Debug)]
@@ -254,7 +270,7 @@ pub struct ConditionalExpression<'a> {
     pub span: Span,
     pub condition: Expression<'a>,
     pub consequent: Expression<'a>,
-    pub alternate: Expression<'a>
+    pub alternate: Expression<'a>,
 }
 
 #[derive(Debug)]
@@ -276,13 +292,13 @@ pub struct UpdateExpression {
     pub span: Span,
     pub op: UpdateOperator,
     pub postfix: bool,
-    pub lvalue: Lvalue
+    pub lvalue: Lvalue,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum UpdateOperator {
     Inc,
-    Dec
+    Dec,
 }
 
 #[derive(Debug)]
@@ -292,20 +308,31 @@ pub struct NumberLiteral {
 }
 
 #[derive(Debug)]
+pub struct VarLiteral<'a> {
+    pub id: Identifier,
+    pub ty: semantics::Type<'a>,
+}
+
+#[derive(Debug)]
 pub enum Type<'a> {
+    Void(&'a VoidType),
     Int(&'a IntType),
-    Alias(&'a AliasType)
+    Alias(&'a AliasType),
+}
+
+#[derive(Debug)]
+pub struct VoidType {
+    pub span: Span,
 }
 
 #[derive(Debug)]
 pub struct IntType {
-    pub span: Span
+    pub span: Span,
 }
 
 #[derive(Debug)]
 pub struct AliasType {
-    pub span: Span,
-    pub id: Identifier
+    pub id: Identifier,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -317,5 +344,5 @@ pub struct Identifier {
 #[derive(Debug, Clone, Copy)]
 pub struct Label {
     pub span: Span,
-    pub symbol: Symbol
+    pub symbol: Symbol,
 }

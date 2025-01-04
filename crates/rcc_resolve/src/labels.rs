@@ -3,7 +3,7 @@ use std::collections::{hash_map::Entry, HashMap};
 use rcc_ast::{
     visit_mut::{self, VisitMut},
     CaseLabeledStatement, Declaration, DefaultLabeledStatement, FunctionDeclaration, GotoStatement,
-    Label, Program, SwitchStatement,
+    Label, Program, SwitchStatement, TopLevelItem,
 };
 use rcc_interner::Symbol;
 use rcc_span::Span;
@@ -16,15 +16,26 @@ pub fn resolve<'a, 'src>(res: &'a mut ResolutionContext<'_, 'src>, program: &'a 
 
 fn resolve_program<'a, 'src>(res: &'a mut ResolutionContext<'_, 'src>, program: &'a Program<'src>) {
     for decl in &program.body {
-        resolve_decl(res, decl);
+        resolve_top_level_item(res, decl);
+    }
+}
+
+fn resolve_top_level_item<'a, 'src>(
+    res: &'a mut ResolutionContext<'_, 'src>,
+    item: &'a TopLevelItem<'src>,
+) {
+    match item {
+        TopLevelItem::Function(item) => resolve_function_decl(res, item),
+        TopLevelItem::Typedef(_) => {}
+        TopLevelItem::Variable(_) => {}
     }
 }
 
 fn resolve_decl<'a, 'src>(res: &'a mut ResolutionContext<'_, 'src>, decl: &'a Declaration<'src>) {
     match decl {
         Declaration::Function(decl) => resolve_function_decl(res, decl),
-        Declaration::Typedef(_) => {},
-        Declaration::Variable(_) => {},
+        Declaration::Typedef(_) => {}
+        Declaration::Variable(_) => {}
     }
 }
 
@@ -40,14 +51,14 @@ fn resolve_function_decl<'a, 'src>(
 type Labels = HashMap<Symbol, Label>;
 
 struct LabelCollector<'a, 'res, 'src> {
-    res: &'res mut ResolutionContext<'a, 'src>,
+    rcx: &'res mut ResolutionContext<'a, 'src>,
     labels: Labels,
 }
 
 impl<'a, 'res, 'src> LabelCollector<'a, 'res, 'src> {
     fn new(res: &'res mut ResolutionContext<'a, 'src>) -> LabelCollector<'a, 'res, 'src> {
         LabelCollector {
-            res,
+            rcx: res,
             labels: HashMap::new(),
         }
     }
@@ -58,9 +69,9 @@ impl<'a, 'res, 'src> LabelCollector<'a, 'res, 'src> {
                 entry.insert(label);
             }
             Entry::Occupied(entry) => {
-                let id = self.res.interner.get(label.symbol);
+                let id = self.rcx.gcx.interner.get(label.symbol);
                 let span = entry.get().span;
-                self.res
+                self.rcx
                     .error(diagnostics::redefined_label(id, span, label.span))
             }
         };
@@ -80,7 +91,7 @@ impl<'a, 'res, 'src> VisitMut<'src> for LabelCollector<'a, 'res, 'src> {
 }
 
 struct LabelResolver<'a, 'res, 'src> {
-    res: &'a mut ResolutionContext<'res, 'src>,
+    rcx: &'a mut ResolutionContext<'res, 'src>,
     labels: &'a HashMap<Symbol, Label>,
 }
 
@@ -89,13 +100,13 @@ impl<'a, 'res, 'src> LabelResolver<'a, 'res, 'src> {
         res: &'a mut ResolutionContext<'res, 'src>,
         labels: &'a Labels,
     ) -> LabelResolver<'a, 'res, 'src> {
-        LabelResolver { res, labels }
+        LabelResolver { rcx: res, labels }
     }
 
     fn lookup_label(&mut self, label: Label) {
         if !self.labels.contains_key(&label.symbol) {
-            let id = self.res.interner.get(label.symbol);
-            self.res.error(diagnostics::undefined_label(id, label.span))
+            let id = self.rcx.gcx.interner.get(label.symbol);
+            self.rcx.error(diagnostics::undefined_label(id, label.span))
         }
     }
 

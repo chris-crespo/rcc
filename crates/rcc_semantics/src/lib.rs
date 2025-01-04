@@ -1,39 +1,50 @@
-use rcc_ast::Program;
-use rcc_interner::Interner;
+mod scope;
+mod symbol;
+mod ty;
 
-mod diagnostics;
-mod labels;
-mod loops;
+pub use scope::*;
+pub use symbol::*;
+pub use ty::*;
 
-pub(crate) struct ResolutionContext<'a, 'src> {
-    interner: &'a Interner<'src>,
-    errors: Vec<miette::Report>,
+#[derive(Debug, Default)]
+pub struct Semantics<'src> {
+    pub scopes: ScopeTree,
+    pub symbols: SymbolTable<'src>,
 }
 
-impl<'a, 'src> ResolutionContext<'a, 'src> {
-    #[inline(always)]
-    fn error(&mut self, error: miette::Report) {
-        self.errors.push(error)
-    }
-}
+// pub(crate) struct ResolutionContext<'a, 'src> {
+//     gcx: &'a GlobalContext<'src>,
+//     errors: Vec<miette::Report>,
+// 
+//     scopes: ScopeTree,
+//     symbols: SymbolTable<'src>,
+// }
+// 
+// impl<'a, 'src> ResolutionContext<'a, 'src> {
+//     fn new(gcx: &'a GlobalContext<'src>) -> ResolutionContext<'a, 'src> {
+//         ResolutionContext {
+//             gcx,
+//             errors: Vec::new(),
+//             scopes: ScopeTree::default(),
+//             symbols: SymbolTable::default(),
+//         }
+//     }
+// 
+//     #[inline(always)]
+//     fn error(&mut self, error: miette::Report) {
+//         self.errors.push(error)
+//     }
+// }
 
-impl<'a, 'src> ResolutionContext<'a, 'src> {
-    fn new(interner: &'a Interner<'src>) -> ResolutionContext<'a, 'src> {
-        ResolutionContext {
-            interner,
-            errors: Vec::new(),
-        }
-    }
-}
-
-pub struct ResolutionResult {
-    pub errors: Vec<miette::Report>,
-}
-
-pub fn resolve<'a>(interner: &'a Interner, program: &'a Program) -> ResolutionResult {
-    let mut cx = ResolutionContext::new(interner);
-    labels::resolve(&mut cx, program);
-    loops::resolve(&mut cx, program);
-
-    ResolutionResult { errors: cx.errors }
-}
+// pub struct ResolutionResult {
+//     pub errors: Vec<miette::Report>,
+// }
+// 
+// pub fn resolve<'a>(gcx: &'a GlobalContext<'_>, program: &'a Program) -> ResolutionResult {
+//     let mut rcx = ResolutionContext::new(gcx);
+//     // symbols::resolve(&mut rcx, program);
+//     labels::resolve(&mut rcx, program);
+//     loops::resolve(&mut rcx, program);
+// 
+//     ResolutionResult { errors: rcx.errors }
+// }
